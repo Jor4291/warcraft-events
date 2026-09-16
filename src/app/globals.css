@@ -262,14 +262,15 @@ button {
 }
 
 .bracket-shell {
-  min-width: max-content;
+  width: 100%;
+  min-width: 0;
 }
 
 .bracket-headers,
 .bracket-grid {
   display: grid;
-  width: max-content;
-  column-gap: 1.75rem;
+  width: 100%;
+  column-gap: 1.5rem;
 }
 
 .bracket-round-title {
@@ -284,11 +285,13 @@ button {
 .bracket-cell {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .bracket-match {
   position: relative;
   width: 100%;
+  min-width: 0;
 }
 
 .bracket-cell-left .bracket-match::after,
@@ -316,6 +319,9 @@ button {
 .bracket-slot {
   display: block;
   width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
   padding: 0.35rem 0.55rem;
   font-size: 0.85rem;

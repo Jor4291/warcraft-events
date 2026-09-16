@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveWhiteboard, setMatchWinner } from "@/lib/actions";
 import type { BracketMatch, BracketRound } from "@/lib/types";
+
+const MIN_SCALE = 0.4;
+const MAX_SCALE = 1.8;
+const SCALE_STEP = 0.12;
 
 export function BracketBoard({
   slug,
@@ -11,6 +15,7 @@ export function BracketBoard({
   whiteboard,
   teams,
   rounds,
+  title = "",
 }: {
   slug: string;
   editKey: string;
@@ -18,10 +23,12 @@ export function BracketBoard({
   whiteboard: string;
   teams: string[];
   rounds: BracketRound[];
+  title?: string;
 }) {
   const [notes, setNotes] = useState(whiteboard);
   const [roster, setRoster] = useState(teams.join("\n"));
   const [pending, start] = useTransition();
+  const heading = title.trim() || "Tournament Bracket";
 
   return (
     <div className="space-y-6">
@@ -63,6 +70,7 @@ export function BracketBoard({
         <p className="text-[var(--muted)]">No bracket yet. Add at least two names to hang a board.</p>
       ) : (
         <TraditionalBracket
+          heading={heading}
           rounds={rounds}
           canEdit={canEdit}
           onPick={(matchId, winner) => {
@@ -77,10 +85,12 @@ export function BracketBoard({
 }
 
 function TraditionalBracket({
+  heading,
   rounds,
   canEdit,
   onPick,
 }: {
+  heading: string;
   rounds: BracketRound[];
   canEdit: boolean;
   onPick: (matchId: string, winner: string) => void;
@@ -103,17 +113,48 @@ function TraditionalBracket({
     finalRound.name,
     ...[...rightRounds].reverse().map((round) => round.name),
   ];
-  const columns = `repeat(${columnCount}, 11.25rem)`;
+  const columns = `repeat(${columnCount}, minmax(7.5rem, 1fr))`;
 
-  return (
-    <div className="tavern-frame overflow-x-auto p-5">
-      <p className="mb-5 text-center text-xs uppercase tracking-[0.22em] text-[var(--gold)]">
-        Opposite sides · winners march to the hearth
-      </p>
-      {prelim.length === 0 ? (
-        <div className="flex justify-center">
-          <div className="min-w-44">
-            <h4 className="bracket-round-title">{finalRound.name}</h4>
+  const board =
+    prelim.length === 0 ? (
+      <div className="flex justify-center">
+        <div className="min-w-44 max-w-xs flex-1">
+          <h4 className="bracket-round-title">{finalRound.name}</h4>
+          <MatchCard
+            match={finalRound.matches[0]}
+            canEdit={canEdit}
+            onPick={onPick}
+            emptyLabel="TBD"
+            featured
+          />
+        </div>
+      </div>
+    ) : (
+      <div className="bracket-shell">
+        <div className="bracket-headers" style={{ gridTemplateColumns: columns }}>
+          {headers.map((roundTitle, index) => (
+            <h4 key={`${roundTitle}-${index}`} className="bracket-round-title">
+              {roundTitle}
+            </h4>
+          ))}
+        </div>
+        <div
+          className="bracket-grid"
+          style={{
+            gridTemplateColumns: columns,
+            gridTemplateRows: `repeat(${rowCount}, minmax(2.55rem, 1fr))`,
+          }}
+        >
+          {leftRounds.flatMap((round, roundIndex) =>
+            placeMatches(round, roundIndex, roundIndex + 1, "left", canEdit, onPick),
+          )}
+          <div
+            className="bracket-cell"
+            style={{
+              gridColumn: leftRounds.length + 1,
+              gridRow: `1 / span ${rowCount}`,
+            }}
+          >
             <MatchCard
               match={finalRound.matches[0]}
               canEdit={canEdit}
@@ -122,47 +163,145 @@ function TraditionalBracket({
               featured
             />
           </div>
+          {rightRounds.flatMap((round, roundIndex) =>
+            placeMatches(round, roundIndex, columnCount - roundIndex, "right", canEdit, onPick),
+          )}
         </div>
-      ) : (
-        <div className="bracket-shell">
-          <div className="bracket-headers" style={{ gridTemplateColumns: columns }}>
-            {headers.map((title, index) => (
-              <h4 key={`${title}-${index}`} className="bracket-round-title">
-                {title}
-              </h4>
-            ))}
-          </div>
-          <div
-            className="bracket-grid"
-            style={{
-              gridTemplateColumns: columns,
-              gridTemplateRows: `repeat(${rowCount}, minmax(2.55rem, 1fr))`,
+      </div>
+    );
+
+  return (
+    <div className="tavern-frame p-4 md:p-5">
+      <BracketCanvas columnCount={columnCount} heading={heading}>
+        {board}
+      </BracketCanvas>
+    </div>
+  );
+}
+
+function BracketCanvas({
+  children,
+  columnCount,
+  heading,
+}: {
+  children: ReactNode;
+  columnCount: number;
+  heading: string;
+}) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [frameW, setFrameW] = useState(0);
+  const [boardH, setBoardH] = useState(0);
+  const [mode, setMode] = useState<"fit" | "manual">("fit");
+  const [manualScale, setManualScale] = useState(1);
+
+  const minWidth = Math.max(columnCount, 1) * 120;
+  const innerWidth = Math.max(frameW || minWidth, minWidth);
+  const fitScale = frameW && innerWidth ? Math.min(1, frameW / innerWidth) : 1;
+  const scale = mode === "fit" ? fitScale : manualScale;
+  const zoomedIn = scale > fitScale + 0.01;
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) {
+      return;
+    }
+    const sync = () => setFrameW(frame.clientWidth);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) {
+      return;
+    }
+    const sync = () => setBoardH(board.offsetHeight);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(board);
+    return () => observer.disconnect();
+  }, [columnCount, innerWidth]);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) {
+      return;
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) {
+        return;
+      }
+      event.preventDefault();
+      zoomBy(event.deltaY > 0 ? -SCALE_STEP : SCALE_STEP);
+    };
+    frame.addEventListener("wheel", onWheel, { passive: false });
+    return () => frame.removeEventListener("wheel", onWheel);
+  });
+
+  function zoomBy(delta: number) {
+    setMode("manual");
+    setManualScale((current) => {
+      const from = mode === "fit" ? fitScale : current;
+      return Number(Math.min(MAX_SCALE, Math.max(MIN_SCALE, from + delta)).toFixed(3));
+    });
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+        <div className="hidden w-[9.5rem] sm:order-1 sm:block" />
+        <h2 className="tavern-title m-0 min-w-0 text-center text-xl sm:order-2 md:text-3xl">{heading}</h2>
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:order-3 sm:justify-end">
+          <button
+            type="button"
+            aria-label="Zoom out"
+            className="tavern-btn-ghost px-3 py-1 text-sm"
+            onClick={() => zoomBy(-SCALE_STEP)}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            aria-label="Fit bracket to width"
+            className="tavern-btn-ghost px-3 py-1 text-sm"
+            onClick={() => {
+              setMode("fit");
+              setManualScale(fitScale);
             }}
           >
-            {leftRounds.flatMap((round, roundIndex) =>
-              placeMatches(round, roundIndex, roundIndex + 1, "left", canEdit, onPick),
-            )}
-            <div
-              className="bracket-cell"
-              style={{
-                gridColumn: leftRounds.length + 1,
-                gridRow: `1 / span ${rowCount}`,
-              }}
-            >
-              <MatchCard
-                match={finalRound.matches[0]}
-                canEdit={canEdit}
-                onPick={onPick}
-                emptyLabel="TBD"
-                featured
-              />
-            </div>
-            {rightRounds.flatMap((round, roundIndex) =>
-              placeMatches(round, roundIndex, columnCount - roundIndex, "right", canEdit, onPick),
-            )}
+            Fit
+          </button>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            className="tavern-btn-ghost px-3 py-1 text-sm"
+            onClick={() => zoomBy(SCALE_STEP)}
+          >
+            +
+          </button>
+          <span className="w-10 text-xs tabular-nums text-[var(--muted)]">{Math.round(scale * 100)}%</span>
+        </div>
+      </div>
+      <div
+        ref={frameRef}
+        className={`max-h-[min(80vh,52rem)] ${zoomedIn ? "overflow-auto" : "overflow-hidden"}`}
+      >
+        <div style={{ width: innerWidth * scale || "100%", height: boardH * scale || undefined }}>
+          <div
+            ref={boardRef}
+            style={{
+              width: innerWidth || "100%",
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            {children}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -256,7 +395,13 @@ function PlayerRow({
 }) {
   const won = Boolean(name) && winner === name;
   return (
-    <button type="button" disabled={disabled} onClick={onPick} className={`bracket-slot ${won ? "is-winner" : ""}`}>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onPick}
+      title={name || emptyLabel}
+      className={`bracket-slot ${won ? "is-winner" : ""}`}
+    >
       {name || emptyLabel}
     </button>
   );

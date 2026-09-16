@@ -28,7 +28,7 @@ export default async function EventPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-8 px-6 py-12">
+    <main className="mx-auto w-full max-w-[100rem] space-y-8 px-4 py-12 md:px-8">
       <div>
         <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">
           {event.cancelledAt ? "cancelled" : event.status} · {event.game} · {event.region || "All regions"} ·{" "}
@@ -65,7 +65,6 @@ export default async function EventPage({
       {canEdit ? <EventManage event={event} editKey={key || event.editKey} /> : null}
 
       <div>
-        <h2 className="tavern-title mb-4 text-2xl">Event bracket</h2>
         <BracketBoard
           slug={event.slug}
           editKey={canEdit ? key || event.editKey : ""}
@@ -73,6 +72,7 @@ export default async function EventPage({
           whiteboard={event.whiteboard}
           teams={event.teams}
           rounds={event.rounds}
+          title={event.title}
         />
       </div>
     </main>
