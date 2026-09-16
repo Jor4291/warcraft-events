@@ -68,7 +68,7 @@ export function classColor(value: string) {
 }
 
 export function getArenaTitle(rating: number, games: number, minRatedGames = 3) {
-  let found = TITLES[0];
+  let found: (typeof TITLES)[number] = TITLES[0];
   for (const title of TITLES) {
     const needGames = title.key === "unranked" ? title.minGames : Math.max(title.minGames, minRatedGames);
     if (games >= needGames && rating >= title.rating) {
