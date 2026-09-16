@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { classColor, formatClassName } from "@/lib/display";
+import { LadderPreview } from "@/components/LadderPreview";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function HomePage() {
   const upcoming = store.events
     .filter((event) => event.status === "published" && event.kind === "calendar" && !event.cancelledAt)
     .slice(0, 4);
-  const top = store.players.slice(0, 8);
+  const confirmedMatches = store.matches.filter((match) => match.confirmed).length;
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -71,30 +71,7 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section className="tavern-frame p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="tavern-title text-xl">Arena Leaderboard</h2>
-            <Link href="/ladder">Full board</Link>
-          </div>
-          {top.length === 0 ? (
-            <p className="text-[var(--muted)]">
-              No confirmed rated matches yet. Paste an <code>/ard upload</code> log from the leaderboard.
-            </p>
-          ) : (
-            <ol className="space-y-2 text-sm">
-              {top.map((player, index) => (
-                <li key={player.name} className="flex justify-between gap-4">
-                  <span>
-                    {index + 1}.{" "}
-                    <span style={{ color: classColor(player.className) }}>{player.name}</span>
-                    <span className="text-[var(--muted)]"> {formatClassName(player.className)}</span>
-                  </span>
-                  <span className="text-[var(--gold)]">{player.points.toFixed(0)}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+        <LadderPreview players={store.players} confirmedMatches={confirmedMatches} />
       </div>
     </main>
   );

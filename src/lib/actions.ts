@@ -83,7 +83,7 @@ export async function logoutAccount() {
 export async function generateUploadToken() {
   const user = await getSessionUser();
   if (!user) {
-    return { error: "Sign in to create an uploader token." };
+    return { error: "Sign in to create an uploader key." };
   }
   const token = `weu_${randomBytes(24).toString("hex")}`;
   const isHub = hubNameList().includes(user.displayName.trim().toLowerCase());
@@ -343,7 +343,14 @@ export async function setMatchWinner(slug: string, editKey: string, matchId: str
 }
 
 export async function uploadLadderJson(jsonText: string) {
-  const parsed = JSON.parse(jsonText) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(
+      "That doesn't look like a duel log. In game, type /ard upload, copy everything it prints, and paste it here.",
+    );
+  }
   const result = await ingestArdu1(parsed);
   revalidatePath("/ladder");
   revalidatePath("/");
