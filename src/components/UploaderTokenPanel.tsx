@@ -32,8 +32,7 @@ export function UploaderTokenPanel({
         <LadderSetupLinks />
       </div>
       <p className="mt-2 text-xs text-[var(--muted)]">
-        Windows may warn that the file is unsigned. Choose More info, then Run anyway. Site URL in the app should
-        be <code>https://warcraftevents.com</code>.
+        Site URL in the app should be <code>https://warcraftevents.com</code>.
       </p>
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-[var(--muted)]">
         <li>Install Arena Ranked Duels from CurseForge.</li>

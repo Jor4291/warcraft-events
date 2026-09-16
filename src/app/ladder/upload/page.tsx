@@ -17,9 +17,9 @@ export default function UploadPage() {
         remains the fallback: run <code>/ard upload</code>, copy the JSON, and submit it here. Anyone may paste
         a log — only confirmed fights (two reporters, or a hub token) change the Arena Leaderboard.
       </p>
-      <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
+      <div className="mt-4 mb-6">
         <LadderSetupLinks />
-        <span className="text-sm text-[var(--muted)]">Then create a token on your account page.</span>
+        <p className="mt-2 text-sm text-[var(--muted)]">Then create a token on your account page.</p>
       </div>
       <form
         className="space-y-4"

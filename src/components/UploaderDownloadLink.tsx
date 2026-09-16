@@ -2,9 +2,15 @@ import { ADDON_CURSEFORGE_URL, UPLOADER_EXE_URL } from "@/lib/downloads";
 
 export function UploaderDownloadLink({ className = "tavern-btn no-underline" }: { className?: string }) {
   return (
-    <a className={className} href={UPLOADER_EXE_URL}>
-      Download Windows uploader
-    </a>
+    <span className="inline-flex flex-col items-start gap-1">
+      <a className={className} href={UPLOADER_EXE_URL}>
+        Download Windows uploader
+      </a>
+      <span className="max-w-xs text-xs leading-snug text-[var(--muted)]">
+        Windows may say Unknown publisher. That&apos;s us — this beta isn&apos;t code-signed yet. Choose More
+        info, then Run anyway.
+      </span>
+    </span>
   );
 }
 
