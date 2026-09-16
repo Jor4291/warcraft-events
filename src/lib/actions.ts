@@ -8,6 +8,7 @@ import { getSessionUser, hashUploadToken, hubNameList, loginUser, logoutUser, re
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
 import { canManageEvent } from "./event-access";
+import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { EventRecord, SignupMode } from "./types";
 
