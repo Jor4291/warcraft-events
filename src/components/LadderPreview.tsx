@@ -36,7 +36,7 @@ export function LadderPreview({
       </div>
       {top.length === 0 ? (
         <p className="mt-3 text-[var(--muted)]">
-          No confirmed rated matches yet. Submit a duel log from the leaderboard.
+          No confirmed rated matches yet. <Link href="/ladder/setup">How to send duels</Link>.
         </p>
       ) : (
         <>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { generateUploadToken } from "@/lib/actions";
 import { LadderSetupLinks } from "@/components/UploaderDownloadLink";
 
@@ -72,24 +73,20 @@ export function UploaderTokenPanel({
     <section className="tavern-frame p-5">
       <h2 className="tavern-title text-xl">Arena uploader</h2>
       <p className="mt-2 text-sm text-[var(--muted)]">
-        Leave the Windows uploader running while you play. After a session, type <code>/reload</code> or log
-        out so your duels get sent. You can still paste a log by hand if you don&apos;t want the app.
+        Leave the Windows app running while you play, then <code>/reload</code> or log out.{" "}
+        <Link href="/ladder/setup">How to install it</Link>.
       </p>
       <p className="mt-2 text-sm text-[var(--muted)]">
-        A fight is confirmed on this site, not by the addon. A key on {displayName}
+        A fight is confirmed on this site, not in game. A key on {displayName}
         {hub ? " can confirm fights as Arena Master" : " sends duels as a normal player"}.
       </p>
       <div className="mt-4">
         <LadderSetupLinks />
       </div>
       <p className="mt-2 text-xs text-[var(--muted)]">
-        Site URL in the app should be <code>https://warcraftevents.com</code>.
+        In the app, Site URL should be <code>https://warcraftevents.com</code>. Paste the key below, Save, then
+        Scan for addon data.
       </p>
-      <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-[var(--muted)]">
-        <li>Install Arena Ranked Duels from CurseForge.</li>
-        <li>Download and run the Windows uploader.</li>
-        <li>Create a key below, paste it in the app, and let it find your addon data.</li>
-      </ol>
       <form
         className="mt-4"
         action={async () => {

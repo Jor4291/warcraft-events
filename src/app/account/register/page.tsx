@@ -11,7 +11,7 @@ export default function RegisterPage() {
     <main className="mx-auto w-full max-w-md px-6 py-12">
       <h1 className="tavern-title text-3xl">Register</h1>
       <p className="mt-2 mb-8 text-[var(--muted)]">
-        A light tavern account is enough to book events and keep your invite codes.{" "}
+        A light tavern account is enough to book events, send rated duels, and keep your invite codes.{" "}
         <Link href="/account/login">Already have a stool?</Link>
       </p>
       <form

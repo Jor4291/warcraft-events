@@ -70,11 +70,13 @@
       <p style="text-transform:uppercase;letter-spacing:0.28em;font-size:0.75rem;color:var(--gold);margin:0 0 0.5rem">WarcraftEvents.com</p>
       <h1>Arena uploader</h1>
       <p>
-        Watches <code>Arena Ranked Duels.lua</code> the same way Warcraft Logs watches the combat log.
+        Watches your rated duels the same way Warcraft Logs watches a combat log.
         Install the addon from
-        <a href="https://www.curseforge.com/wow/addons/arena-ranked-duels">CurseForge</a>.
-        After a rated session, <code>/reload</code> or log out so WoW flushes SavedVariables.
-        Keep this uploader window open; if a second copy flickers and closes, the first one is already running.
+        <a href="https://www.curseforge.com/wow/addons/arena-ranked-duels">CurseForge</a>
+        and follow
+        <a href="https://warcraftevents.com/ladder/setup">how to send duels</a>.
+        After you play, <code>/reload</code> or log out. Keep this window open — if a second copy flickers
+        shut, the first one is already running.
       </p>
       <section class="frame">
         <h2>Connection</h2>
@@ -119,7 +121,7 @@
         $("autoUpload").checked = Boolean(state.config.autoUpload);
         $("files").innerHTML = state.files.length
           ? state.files.map((file) => `<li>${file.flavor} · ${file.account}<br><code>${file.path}</code></li>`).join("")
-          : "<li>None found yet. Click Scan after <code>/reload</code>. The addon must be installed in that client&apos;s AddOns folder (Retail and Forever are different folders).</li>";
+          : "<li>None found yet. Click Scan after <code>/reload</code>. The addon must be installed in the World of Warcraft you are playing (Forever and Retail are different folders).</li>";
         $("log").innerHTML = (state.log || [])
           .map((item) => `<li>${item.at?.replace("T", " ").slice(0, 19)} — ${item.message}</li>`)
           .join("");

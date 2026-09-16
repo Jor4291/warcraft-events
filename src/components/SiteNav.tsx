@@ -13,6 +13,7 @@ export function SiteNav({ user }: { user: PublicUser | null }) {
         </div>
       </details>
       <Link href="/ladder">Arena Leaderboard</Link>
+      <Link href="/ladder/setup">How to send duels</Link>
       {user ? <Link href="/account">{user.displayName}</Link> : <Link href="/account/login">Sign in</Link>}
     </nav>
   );

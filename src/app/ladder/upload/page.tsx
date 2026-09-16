@@ -20,22 +20,20 @@ export default function UploadPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <h1 className="tavern-title text-3xl">Submit a duel log</h1>
+      <h1 className="tavern-title text-3xl">Paste a duel log</h1>
       <p className="mt-2 text-[var(--muted)]">
-        The addon keeps your rated duels in game, but it can&apos;t send them here on its own. Get the addon,
-        then download the Windows uploader and leave it running while you play. After a session, type{" "}
-        <code>/reload</code> or log out so your results get sent.
+        The usual path is the Windows app: install the addon, leave the uploader running, then type{" "}
+        <code>/reload</code> after you play.{" "}
+        <Link href="/ladder/setup">Full setup walkthrough</Link>.
       </p>
       <p className="mt-2 text-[var(--muted)]">
-        Prefer to paste? In game, type <code>/ard upload</code>, copy what it gives you, and drop it in the box
-        below. A fight only hits the Arena Leaderboard when both players send it, or when the Arena Master
-        reports it.
+        This box is the backup. In game, type <code>/ard upload</code>, copy what it gives you, and paste it
+        here. A fight only hits the board when both players send it, or when the Arena Master reports it.
       </p>
       <div className="mt-4 mb-6">
         <LadderSetupLinks />
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Using the Windows uploader? <Link href="/account">Sign in</Link> and create a key on your account page
-          so the app can send your duels.
+          Using the Windows app? <Link href="/account">Sign in</Link> and create a key on your account page.
         </p>
       </div>
       <form

@@ -49,7 +49,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <span className="mx-2">·</span>
           <Link href="/admin">Innkeeper</Link>
           <span className="mx-2">·</span>
-          <Link href="/ladder/upload">Submit a duel log</Link>
+          <Link href="/ladder/setup">How to send duels</Link>
+          <span className="mx-2">·</span>
+          <Link href="/ladder/upload">Paste a duel log</Link>
         </footer>
       </body>
     </html>

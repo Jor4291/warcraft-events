@@ -11,7 +11,7 @@ export function LoginForm({ next, intro }: { next: string; intro?: string }) {
     <main className="mx-auto w-full max-w-md px-6 py-12">
       <h1 className="tavern-title text-3xl">Sign in</h1>
       <p className="mt-2 mb-8 text-[var(--muted)]">
-        {intro || "Hosts need an account to book, edit, and cancel events."}{" "}
+        {intro || "A tavern account lets you book events and send rated duels to the board."}{" "}
         <Link href="/account/register">Register</Link>
       </p>
       <form
