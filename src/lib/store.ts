@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import { emptyStore } from "./seed";
+import { emptyStore, withPlaceholderEvents } from "./seed";
 import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
@@ -39,12 +39,14 @@ function normalizeUser(user: UserRecord): UserRecord {
 }
 
 function normalize(data: Partial<StoreData> | StoreData): StoreData {
-  return normalizeLadderIdentities({
-    events: (data.events ?? []).map(normalizeEvent),
-    matches: data.matches ?? [],
-    players: data.players ?? [],
-    users: (data.users ?? []).map(normalizeUser),
-  });
+  return withPlaceholderEvents(
+    normalizeLadderIdentities({
+      events: (data.events ?? []).map(normalizeEvent),
+      matches: data.matches ?? [],
+      players: data.players ?? [],
+      users: (data.users ?? []).map(normalizeUser),
+    }),
+  );
 }
 
 async function readFileStore(): Promise<StoreData> {
@@ -94,7 +96,7 @@ export async function getStore(): Promise<StoreData> {
     const raw = await readPostgres();
     const next = normalize(raw);
     identityRewriteQueued = true;
-    if (ladderIdentitiesChanged(raw, next)) {
+    if (ladderIdentitiesChanged(raw, next) || raw.events.length !== next.events.length) {
       void updateStore((data) => data);
     }
     return clone(next);

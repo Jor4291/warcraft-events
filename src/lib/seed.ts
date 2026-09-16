@@ -1,5 +1,5 @@
-import { buildSingleElim } from "./brackets";
-import type { EventRecord, StoreData } from "./types";
+import { applyWinner, buildSingleElim } from "./brackets";
+import type { EventRecord, EventSignup, StoreData } from "./types";
 
 function daysFromNow(days: number, hour = 18) {
   const date = new Date();
@@ -15,6 +15,7 @@ function event(
     ownerId?: string;
     signupMode?: EventRecord["signupMode"];
     inviteCode?: string;
+    signups?: EventSignup[];
   },
 ): EventRecord {
   return {
@@ -24,15 +25,52 @@ function event(
     ownerId: partial.ownerId ?? "",
     signupMode: partial.signupMode ?? "open",
     inviteCode: partial.inviteCode ?? "SEEDOPEN",
-    signups: [],
+    signups: partial.signups ?? [],
     cancelledAt: "",
     rounds: buildSingleElim(partial.teams),
     createdAt: new Date().toISOString(),
   };
 }
 
-export const emptyStore = (): StoreData => ({
-  events: [
+function signup(id: string, name: string): EventSignup {
+  return { id, name, userId: "", createdAt: new Date().toISOString() };
+}
+
+function inProgressPickup(record: EventRecord, winners: Array<[string, string]>) {
+  let rounds = record.rounds;
+  for (const [matchId, winner] of winners) {
+    rounds = applyWinner(rounds, matchId, winner);
+  }
+  return { ...record, rounds };
+}
+
+export function placeholderEvents(): EventRecord[] {
+  const pickup = inProgressPickup(
+    event({
+      id: "seed-goldshire-pickup",
+      slug: "goldshire-pickup-bracket",
+      title: "Goldshire Pickup Bracket",
+      game: "WoW:Forever",
+      format: "Single elimination",
+      startsAt: daysFromNow(0, 21),
+      endsAt: "",
+      region: "NA",
+      location: "Goldshire yard",
+      description: "Standalone bracket — not listed on the calendar.",
+      contact: "Sgtpepper",
+      editKey: "seed-pickup-key",
+      kind: "bracket",
+      whiteboard: "First to tap the well. Loser buys the next round.",
+      teams: ["Sgtpepper", "Testytestydu", "Dueltest", "Testduel", "Roktar", "Mira", "Bren", "Syla"],
+    }),
+    [
+      ["r1-m1", "Sgtpepper"],
+      ["r1-m2", "Testduel"],
+      ["r1-m3", "Mira"],
+    ],
+  );
+
+  return [
     event({
       id: "seed-forever-cup",
       slug: "forever-arena-cup",
@@ -58,6 +96,12 @@ export const emptyStore = (): StoreData => ({
         "Ironforge Kid",
         "Stormwind Blade",
       ],
+      signups: [
+        signup("seed-cup-s1", "Sgtpepper"),
+        signup("seed-cup-s2", "Testytestydu"),
+        signup("seed-cup-s3", "Dueltest"),
+        signup("seed-cup-s4", "Testduel"),
+      ],
     }),
     event({
       id: "seed-brawl",
@@ -74,6 +118,7 @@ export const emptyStore = (): StoreData => ({
       editKey: "seed-brawl-key",
       whiteboard: "House rules: no pets in the taproom.",
       teams: ["Roktar", "Mira", "Bren", "Syla"],
+      signups: [signup("seed-brawl-s1", "Roktar"), signup("seed-brawl-s2", "Mira"), signup("seed-brawl-s3", "Bren")],
     }),
     event({
       id: "seed-raid",
@@ -90,6 +135,13 @@ export const emptyStore = (): StoreData => ({
       editKey: "seed-raid-key",
       whiteboard: "Invites 15 minutes before pull.",
       teams: [],
+      signups: [
+        signup("seed-raid-s1", "Sgtpepper"),
+        signup("seed-raid-s2", "Aldric"),
+        signup("seed-raid-s3", "Petra"),
+        signup("seed-raid-s4", "Nils"),
+        signup("seed-raid-s5", "Yara"),
+      ],
     }),
     event({
       id: "seed-eu",
@@ -106,9 +158,24 @@ export const emptyStore = (): StoreData => ({
       editKey: "seed-eu-key",
       whiteboard: "",
       teams: ["Aldric", "Petra", "Nils", "Yara", "Tomas", "Inga"],
+      signups: [signup("seed-eu-s1", "Aldric"), signup("seed-eu-s2", "Petra")],
     }),
-  ],
+    pickup,
+  ];
+}
+
+export const emptyStore = (): StoreData => ({
+  events: placeholderEvents(),
   matches: [],
   players: [],
   users: [],
 });
+
+export function withPlaceholderEvents(data: StoreData): StoreData {
+  const existing = new Set(data.events.map((item) => item.slug));
+  const extra = placeholderEvents().filter((item) => !existing.has(item.slug));
+  if (extra.length === 0) {
+    return data;
+  }
+  return { ...data, events: [...data.events, ...extra] };
+}
