@@ -97,7 +97,10 @@ export async function getStore(): Promise<StoreData> {
     const next = normalize(raw);
     identityRewriteQueued = true;
     if (ladderIdentitiesChanged(raw, next) || raw.events.length !== next.events.length) {
-      void updateStore((data) => data);
+      void updateStore((data) => data).catch((error) => {
+        identityRewriteQueued = false;
+        console.error("Failed to persist store rewrite", error);
+      });
     }
     return clone(next);
   }

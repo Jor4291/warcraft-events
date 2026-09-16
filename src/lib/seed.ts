@@ -121,7 +121,7 @@ export function placeholderEvents(): EventRecord[] {
       signups: [signup("seed-brawl-s1", "Roktar"), signup("seed-brawl-s2", "Mira"), signup("seed-brawl-s3", "Bren")],
     }),
     event({
-      id: "seed-raid",
+      id: "seed-weekend-raid",
       slug: "weekend-raid-night",
       title: "Weekend Raid Night",
       game: "WoW:Forever",
@@ -171,11 +171,31 @@ export const emptyStore = (): StoreData => ({
   users: [],
 });
 
-export function withPlaceholderEvents(data: StoreData): StoreData {
-  const existing = new Set(data.events.map((item) => item.slug));
-  const extra = placeholderEvents().filter((item) => !existing.has(item.slug));
-  if (extra.length === 0) {
-    return data;
+export function uniqueEvents(events: EventRecord[]): EventRecord[] {
+  const byId = new Map<string, EventRecord>();
+  for (const event of events) {
+    if (!event.id || byId.has(event.id)) {
+      continue;
+    }
+    byId.set(event.id, event);
   }
-  return { ...data, events: [...data.events, ...extra] };
+  const bySlug = new Map<string, EventRecord>();
+  for (const event of byId.values()) {
+    if (!event.slug || bySlug.has(event.slug)) {
+      continue;
+    }
+    bySlug.set(event.slug, event);
+  }
+  return [...bySlug.values()];
+}
+
+export function withPlaceholderEvents(data: StoreData): StoreData {
+  const events = uniqueEvents(data.events);
+  const ids = new Set(events.map((item) => item.id));
+  const slugs = new Set(events.map((item) => item.slug));
+  const extra = placeholderEvents().filter((item) => !ids.has(item.id) && !slugs.has(item.slug));
+  if (extra.length === 0) {
+    return events === data.events ? data : { ...data, events };
+  }
+  return { ...data, events: [...events, ...extra] };
 }

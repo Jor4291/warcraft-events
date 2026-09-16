@@ -76,18 +76,31 @@ export async function registerUser(email: string, password: string, displayName:
   }
   const id = randomBytes(8).toString("hex");
   const { hash, salt } = hashPassword(password);
-  await updateStore((data) => {
-    data.users.push({
-      id,
-      email: normalized,
-      displayName: name,
-      passwordHash: hash,
-      passwordSalt: salt,
-      uploadTokenHash: "",
-      isHub: false,
-      createdAt: new Date().toISOString(),
+  let created = false;
+  try {
+    await updateStore((data) => {
+      if (data.users.some((user) => user.email === normalized)) {
+        return data;
+      }
+      created = true;
+      data.users.push({
+        id,
+        email: normalized,
+        displayName: name,
+        passwordHash: hash,
+        passwordSalt: salt,
+        uploadTokenHash: "",
+        isHub: false,
+        createdAt: new Date().toISOString(),
+      });
     });
-  });
+  } catch (error) {
+    console.error("Failed to register user", error);
+    return { error: "Could not create the account. Try again." };
+  }
+  if (!created) {
+    return { error: "That email is already registered." };
+  }
   await setSession(id);
   return { ok: true as const };
 }

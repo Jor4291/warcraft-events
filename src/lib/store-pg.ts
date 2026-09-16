@@ -107,26 +107,55 @@ export async function readPostgres(): Promise<StoreData> {
   return data;
 }
 
+function deleteMissing(sql: ReturnType<typeof getSql>, table: "users" | "events" | "matches" | "players", ids: string[]) {
+  if (ids.length === 0) {
+    if (table === "users") return sql`DELETE FROM users`;
+    if (table === "events") return sql`DELETE FROM events`;
+    if (table === "matches") return sql`DELETE FROM matches`;
+    return sql`DELETE FROM players`;
+  }
+  if (table === "users") return sql`DELETE FROM users WHERE NOT (id = ANY(${ids}))`;
+  if (table === "events") return sql`DELETE FROM events WHERE NOT (id = ANY(${ids}))`;
+  if (table === "matches") return sql`DELETE FROM matches WHERE NOT (match_id = ANY(${ids}))`;
+  return sql`DELETE FROM players WHERE NOT (name = ANY(${ids}))`;
+}
+
 export async function writePostgres(data: StoreData) {
   await ensureSchema();
   const sql = getSql();
   const queries = [
-    sql`TRUNCATE users, events, matches, players`,
     ...data.users.map(
       (user) =>
         sql`INSERT INTO users (id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, created_at)
-            VALUES (${user.id}, ${user.email}, ${user.displayName}, ${user.passwordHash}, ${user.passwordSalt}, ${user.uploadTokenHash}, ${user.isHub}, ${user.createdAt})`,
+            VALUES (${user.id}, ${user.email}, ${user.displayName}, ${user.passwordHash}, ${user.passwordSalt}, ${user.uploadTokenHash}, ${user.isHub}, ${user.createdAt})
+            ON CONFLICT (id) DO UPDATE SET
+              email = EXCLUDED.email,
+              display_name = EXCLUDED.display_name,
+              password_hash = EXCLUDED.password_hash,
+              password_salt = EXCLUDED.password_salt,
+              upload_token_hash = EXCLUDED.upload_token_hash,
+              is_hub = EXCLUDED.is_hub,
+              created_at = EXCLUDED.created_at`,
     ),
     ...data.events.map(
-      (event) => sql`INSERT INTO events (id, slug, data) VALUES (${event.id}, ${event.slug}, ${event})`,
+      (event) =>
+        sql`INSERT INTO events (id, slug, data) VALUES (${event.id}, ${event.slug}, ${event})
+            ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug, data = EXCLUDED.data`,
     ),
     ...data.matches.map(
       (match) =>
-        sql`INSERT INTO matches (match_id, timestamp, confirmed, data) VALUES (${match.matchId}, ${match.timestamp}, ${match.confirmed}, ${match})`,
+        sql`INSERT INTO matches (match_id, timestamp, confirmed, data) VALUES (${match.matchId}, ${match.timestamp}, ${match.confirmed}, ${match})
+            ON CONFLICT (match_id) DO UPDATE SET timestamp = EXCLUDED.timestamp, confirmed = EXCLUDED.confirmed, data = EXCLUDED.data`,
     ),
     ...data.players.map(
-      (player) => sql`INSERT INTO players (name, points, data) VALUES (${player.name}, ${player.points}, ${player})`,
+      (player) =>
+        sql`INSERT INTO players (name, points, data) VALUES (${player.name}, ${player.points}, ${player})
+            ON CONFLICT (name) DO UPDATE SET points = EXCLUDED.points, data = EXCLUDED.data`,
     ),
+    deleteMissing(sql, "users", data.users.map((user) => user.id)),
+    deleteMissing(sql, "events", data.events.map((event) => event.id)),
+    deleteMissing(sql, "matches", data.matches.map((match) => match.matchId)),
+    deleteMissing(sql, "players", data.players.map((player) => player.name)),
   ];
   await sql.transaction(queries);
 }
