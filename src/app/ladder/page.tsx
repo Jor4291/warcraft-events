@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getStore } from "@/lib/store";
 
-export const metadata = { title: "Forever ladder" };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Arena Leaderboard" };
 
 export default async function LadderPage() {
   const store = await getStore();
@@ -11,25 +12,20 @@ export default async function LadderPage() {
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--gold)]">
-            WoW:Forever Arena Ranked Duels
-          </h1>
+          <h1 className="tavern-title text-3xl">Arena Leaderboard</h1>
           <p className="mt-2 max-w-2xl text-[var(--muted)]">
-            Official board is recomputed here from confirmed <code>matchId</code> uploads. A match
-            counts when two different reporters send it, or when the Arena Master hub reports it.
+            Official WoW:Forever Arena Ranked Duels board, recomputed from confirmed <code>matchId</code>{" "}
+            logs. A match counts when two different reporters send it, or when the Arena Master hub reports it.
           </p>
         </div>
-        <Link
-          href="/ladder/upload"
-          className="rounded border border-[var(--gold)] px-4 py-2 text-sm no-underline hover:bg-[var(--gold)] hover:text-[#1a120c]"
-        >
-          Upload ARDU1
+        <Link href="/ladder/upload" className="tavern-btn no-underline">
+          Submit a duel log
         </Link>
       </div>
       <p className="mb-4 text-sm text-[var(--muted)]">
         {store.matches.length} stored matches · {pending} pending confirmation · {store.players.length} players
       </p>
-      <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
+      <div className="tavern-frame overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-[#1b140f] text-[var(--gold)]">
             <tr>
@@ -52,9 +48,7 @@ export default async function LadderPage() {
                 <tr key={player.name} className="border-t border-[var(--line)]">
                   <td className="px-4 py-2">{index + 1}</td>
                   <td className="px-4 py-2">{player.name}</td>
-                  <td className="px-4 py-2 text-[var(--muted)]">
-                    {player.spec || player.className || "—"}
-                  </td>
+                  <td className="px-4 py-2 text-[var(--muted)]">{player.spec || player.className || "—"}</td>
                   <td className="px-4 py-2">
                     {player.wins}-{player.losses}
                   </td>

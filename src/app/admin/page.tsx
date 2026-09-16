@@ -13,7 +13,7 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--gold)]">Admin</h1>
+      <h1 className="tavern-title text-3xl">Innkeeper</h1>
       {!configured ? (
         <p className="mt-4 text-[var(--muted)]">
           Set <code>ADMIN_PASSWORD</code> in <code>.env.local</code> (and in Vercel env) to enable moderation.
@@ -33,7 +33,7 @@ export default async function AdminPage() {
             ) : (
               <ul className="space-y-4">
                 {pending.map((event) => (
-                  <li key={event.id} className="rounded border border-[var(--line)] bg-[var(--panel)] p-4">
+                  <li key={event.id} className="tavern-frame p-4">
                     <p className="text-lg">{event.title}</p>
                     <p className="text-sm text-[var(--muted)]">
                       {event.game} · {event.contact} · {event.startsAt}
@@ -41,7 +41,7 @@ export default async function AdminPage() {
                     <p className="mt-2 text-sm">{event.description}</p>
                     <div className="mt-3 flex gap-2">
                       <form action={moderateEvent.bind(null, event.id, "published")}>
-                        <button className="rounded bg-[var(--gold)] px-3 py-1 text-sm text-[#1a120c]" type="submit">
+                        <button className="tavern-btn text-sm" type="submit">
                           Publish
                         </button>
                       </form>
@@ -73,9 +73,9 @@ export default async function AdminPage() {
             type="password"
             name="password"
             placeholder="Admin password"
-            className="w-full rounded border border-[var(--line)] bg-[#120e0b] px-3 py-2"
+            className="tavern-input"
           />
-          <button className="rounded bg-[var(--gold)] px-4 py-2 font-semibold text-[#1a120c]" type="submit">
+          <button className="tavern-btn" type="submit">
             Log in
           </button>
         </form>

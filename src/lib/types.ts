@@ -1,4 +1,6 @@
 export type EventStatus = "pending" | "published" | "rejected";
+export type EventKind = "calendar" | "bracket";
+export type SignupMode = "open" | "invite";
 
 export type BracketMatch = {
   id: string;
@@ -10,6 +12,13 @@ export type BracketMatch = {
 export type BracketRound = {
   name: string;
   matches: BracketMatch[];
+};
+
+export type EventSignup = {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: string;
 };
 
 export type EventRecord = {
@@ -25,11 +34,36 @@ export type EventRecord = {
   description: string;
   contact: string;
   status: EventStatus;
+  kind: EventKind;
+  ownerId: string;
+  signupMode: SignupMode;
+  inviteCode: string;
+  signups: EventSignup[];
+  cancelledAt: string;
   editKey: string;
   whiteboard: string;
   teams: string[];
   rounds: BracketRound[];
   createdAt: string;
+};
+
+export type UserRecord = {
+  id: string;
+  email: string;
+  displayName: string;
+  passwordHash: string;
+  passwordSalt: string;
+  uploadTokenHash: string;
+  isHub: boolean;
+  createdAt: string;
+};
+
+export type PublicUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  isHub: boolean;
+  hasUploadToken: boolean;
 };
 
 export type MatchReport = {
@@ -73,4 +107,5 @@ export type StoreData = {
   events: EventRecord[];
   matches: LadderMatch[];
   players: LadderPlayer[];
+  users: UserRecord[];
 };

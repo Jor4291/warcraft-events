@@ -47,14 +47,14 @@ function asMatch(raw: IncomingMatch): Omit<LadderMatch, "confirmed" | "reports">
   };
 }
 
-export async function ingestArdu1(body: unknown) {
+export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolean }) {
   const payload = body as IncomingPayload;
   if (!payload || payload.format !== "ARDU1" || !Array.isArray(payload.matches)) {
     throw new Error("Expected ARDU1 JSON with a matches array.");
   }
 
   const reporter = String(payload.reporter || "unknown");
-  const hub = Boolean(payload.reporterIsHub);
+  const hub = Boolean(options?.trustedHub);
   const exportedAt = Number(payload.exportedAt) || Math.floor(Date.now() / 1000);
   const report: MatchReport = { reporter, hub, exportedAt };
 

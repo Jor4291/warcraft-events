@@ -35,18 +35,17 @@ Until a database is attached, the store is a JSON file locally and **in-memory o
 
 ## Addon → site
 
-WoW cannot HTTP. In game:
+WoW cannot HTTP. Two ways to get `ARDU1` onto the ladder:
 
-```
-/ard upload
-```
+1. **Uploader (preferred)** — `npm run uploader` or `companion/start-uploader.bat`. Sign in on the site, create a token on `/account`, paste it into the local app. It watches `ArenaRankedDuels.lua`. After a session, `/reload` or log out so SavedVariables flush.
+2. **Paste** — `/ard upload` in game, then `/ladder/upload`.
 
-Paste the `ARDU1` JSON at `/ladder/upload` or `POST /api/ard/upload`.
+`POST /api/ard/upload` accepts the JSON. Send `Authorization: Bearer weu_…` from the uploader.
 
 The site is source of truth:
 
 - Unique key is addon `matchId` (`sortedNameA|sortedNameB|mode|unix/5`), not an incrementing counter.
-- A match is **confirmed** when two different reporters upload it, or when `reporterIsHub` is true.
+- A match is **confirmed** when two different reporters upload it, or when a **hub token** uploads it. The addon’s `reporterIsHub` flag is ignored.
 - Ratings are recomputed on the server (start 1500, K=24). In-game points are ignored as truth.
 
 ## Admin

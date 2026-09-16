@@ -10,10 +10,11 @@ export default function UploadPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--gold)]">Upload ARDU1 log</h1>
+      <h1 className="tavern-title text-3xl">Submit a duel log</h1>
       <p className="mt-2 mb-6 text-[var(--muted)]">
-        In WoW, run <code>/ard upload</code>, copy the JSON, and paste it here. The site upserts on{" "}
-        <code>matchId</code> and only rates confirmed fights.
+        Lua cannot talk to the website, so a desktop uploader watches SavedVariables and POSTs for you. Paste
+        remains the fallback: run <code>/ard upload</code>, copy the JSON, and submit it here. Anyone may paste
+        a log — only confirmed fights (two reporters, or a hub token) change the Arena Leaderboard.
       </p>
       <form
         className="space-y-4"
@@ -34,12 +35,12 @@ export default function UploadPage() {
           value={jsonText}
           onChange={(event) => setJsonText(event.target.value)}
           rows={16}
-          className="w-full rounded border border-[var(--line)] bg-[#120e0b] px-3 py-2 font-mono text-xs"
+          className="tavern-input font-mono text-xs"
           placeholder='{"format":"ARDU1", ...}'
         />
         {error ? <p className="text-red-300">{error}</p> : null}
         {message ? <p className="text-emerald-300">{message}</p> : null}
-        <button type="submit" className="rounded bg-[var(--gold)] px-4 py-2 font-semibold text-[#1a120c]">
+        <button type="submit" className="tavern-btn">
           Ingest log
         </button>
       </form>

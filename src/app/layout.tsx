@@ -1,6 +1,8 @@
-import { Cinzel, Source_Sans_3 } from "next/font/google";
+import { Cinzel, EB_Garamond } from "next/font/google";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteNav } from "@/components/SiteNav";
+import { getSessionUser } from "@/lib/auth";
 import "./globals.css";
 
 const display = Cinzel({
@@ -9,9 +11,10 @@ const display = Cinzel({
   weight: ["600", "700"],
 });
 
-const sans = Source_Sans_3({
+const sans = EB_Garamond({
   variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -23,27 +26,30 @@ export const metadata: Metadata = {
     "Public Warcraft events calendar, tournament brackets, and the WoW:Forever Arena Ranked Duels ladder.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await getSessionUser();
+
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} h-full`}>
-      <body className="min-h-full flex flex-col">
-        <header className="border-b border-[var(--gold-dim)] bg-[#140e0a]/90 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-            <Link href="/" className="font-[family-name:var(--font-display)] text-xl tracking-wide text-[var(--gold)]">
-              WarcraftEvents
+      <body className="flex min-h-full flex-col">
+        <header className="border-b border-[var(--gold-dim)] bg-[#140c08]/92">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+            <Link href="/" className="no-underline">
+              <span className="block text-center font-[family-name:var(--font-display)] text-[11px] uppercase tracking-[0.35em] text-[var(--muted)]">
+                The hearth is lit
+              </span>
+              <span className="tavern-title block text-2xl">WarcraftEvents</span>
             </Link>
-            <nav className="flex flex-wrap gap-5 text-sm text-[var(--muted)]">
-              <Link href="/events">Calendar</Link>
-              <Link href="/events/submit">Submit event</Link>
-              <Link href="/ladder">Forever ladder</Link>
-              <Link href="/ladder/upload">Upload log</Link>
-              <Link href="/admin">Admin</Link>
-            </nav>
+            <SiteNav user={user} />
           </div>
         </header>
         <div className="flex-1">{children}</div>
         <footer className="border-t border-[var(--gold-dim)] px-6 py-6 text-center text-sm text-[var(--muted)]">
-          WarcraftEvents.com · community calendar and WoW:Forever ranked duels
+          WarcraftEvents.com · a notice board for Azeroth and WoW:Forever
+          <span className="mx-2">·</span>
+          <Link href="/admin">Innkeeper</Link>
+          <span className="mx-2">·</span>
+          <Link href="/ladder/upload">Submit a duel log</Link>
         </footer>
       </body>
     </html>

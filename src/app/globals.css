@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #100c09;
-  --foreground: #f4ead6;
-  --muted: #cbb79a;
-  --gold: #e0c074;
-  --gold-dim: #5c4a28;
-  --panel: #1b140f;
-  --line: #3a2c1d;
+  --ember: #c45c1a;
+  --background: #120b07;
+  --foreground: #f3e6c4;
+  --muted: #c9b089;
+  --gold: #e6c36a;
+  --gold-bright: #f8e7a8;
+  --gold-dim: #7a5a28;
+  --panel: #24160e;
+  --panel-2: #1a100a;
+  --line: #6b4a24;
+  --parchment: #e7d3a4;
+  --ink: #2b1a0c;
 }
 
 @theme inline {
@@ -17,12 +22,27 @@
   --font-display: var(--font-display);
 }
 
+html,
 body {
-  background:
-    radial-gradient(1200px 500px at 50% -10%, #2a1c12 0%, transparent 55%),
-    var(--background);
+  min-height: 100%;
+}
+
+body {
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), Georgia, serif;
+  background-color: #100904;
+  background-image:
+    radial-gradient(ellipse 90% 50% at 50% -10%, rgba(196, 92, 26, 0.28), transparent 55%),
+    radial-gradient(circle at 8% 90%, rgba(80, 30, 8, 0.55), transparent 42%),
+    radial-gradient(circle at 92% 12%, rgba(120, 70, 18, 0.18), transparent 36%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.07) 0px,
+      rgba(0, 0, 0, 0.07) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(180deg, #1a1008 0%, #0c0704 100%);
 }
 
 a {
@@ -31,7 +51,7 @@ a {
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--gold-bright);
 }
 
 input,
@@ -39,4 +59,211 @@ textarea,
 select,
 button {
   font: inherit;
+}
+
+.tavern-frame {
+  border: 1px solid var(--gold-dim);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 0 3px #2a1a10,
+    0 0 0 4px var(--gold-dim),
+    0 12px 28px rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(180deg, rgba(230, 195, 106, 0.08), transparent 28%),
+    linear-gradient(180deg, #2c1b10 0%, #1a100b 100%);
+}
+
+.tavern-parchment {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.18), transparent 40%),
+    linear-gradient(180deg, #efe0b8 0%, #dcc48a 100%);
+  color: var(--ink);
+  border: 1px solid #b8944e;
+  box-shadow: inset 0 0 40px rgba(90, 50, 10, 0.18), 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.tavern-parchment a {
+  color: #6a3b0c;
+}
+
+.tavern-input {
+  width: 100%;
+  margin-top: 0.35rem;
+  border: 1px solid var(--line);
+  background: #140c08;
+  color: var(--foreground);
+  padding: 0.5rem 0.75rem;
+  border-radius: 2px;
+}
+
+.tavern-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gold);
+  background: linear-gradient(180deg, #f0d78a 0%, #c9a04a 100%);
+  color: #2a1a0c;
+  font-weight: 700;
+  padding: 0.55rem 1rem;
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 0 #6b4a1c;
+}
+
+.tavern-btn:hover {
+  color: #2a1a0c;
+  filter: brightness(1.05);
+  text-decoration: none;
+}
+
+.tavern-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gold-dim);
+  background: rgba(20, 12, 8, 0.6);
+  color: var(--gold);
+  padding: 0.55rem 1rem;
+  text-decoration: none;
+}
+
+.tavern-btn-ghost:hover,
+.tavern-btn-ghost.is-active {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  text-decoration: none;
+  background: rgba(80, 50, 16, 0.45);
+}
+
+.tavern-title {
+  font-family: var(--font-display), serif;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  text-shadow: 0 2px 0 #1a1008, 0 0 18px rgba(196, 92, 26, 0.35);
+}
+
+.nav-menu {
+  position: relative;
+}
+
+.nav-menu-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.nav-menu-button::-webkit-details-marker,
+.nav-menu-button::marker {
+  display: none;
+  content: "";
+}
+
+.nav-menu-button:hover {
+  color: var(--gold-bright);
+}
+
+.nav-menu-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 0;
+  z-index: 30;
+  min-width: 12rem;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--gold-dim);
+  background: #1a100a;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.nav-menu[open] .nav-menu-panel {
+  display: flex;
+}
+
+.nav-menu-panel a {
+  color: var(--muted);
+}
+
+.nav-menu-panel a:hover {
+  color: var(--gold-bright);
+}
+
+.bracket-shell {
+  min-width: max-content;
+}
+
+.bracket-headers,
+.bracket-grid {
+  display: grid;
+  width: max-content;
+  column-gap: 1.75rem;
+}
+
+.bracket-round-title {
+  margin: 0 0 0.85rem;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.bracket-cell {
+  display: flex;
+  align-items: center;
+}
+
+.bracket-match {
+  position: relative;
+  width: 100%;
+}
+
+.bracket-cell-left .bracket-match::after,
+.bracket-cell-right .bracket-match::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 1.5rem;
+  height: 2px;
+  background: var(--gold-dim);
+}
+
+.bracket-cell-left .bracket-match::after {
+  right: -1.5rem;
+}
+
+.bracket-cell-right .bracket-match::after {
+  left: -1.5rem;
+}
+
+.bracket-final-card {
+  width: 100%;
+}
+
+.bracket-slot {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.85rem;
+  background: #140c08;
+  color: var(--foreground);
+  border: 0;
+}
+
+.bracket-slot + .bracket-slot {
+  border-top: 1px solid var(--line);
+}
+
+.bracket-slot.is-winner {
+  background: linear-gradient(90deg, #c9a04a, #e6c36a);
+  color: #2a1a0c;
+  font-weight: 700;
+}
+
+.bracket-slot:disabled {
+  opacity: 0.72;
 }

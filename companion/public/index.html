@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WarcraftEvents Uploader</title>
+    <style>
+      :root {
+        --gold: #e6c36a;
+        --muted: #c9b089;
+        --line: #6b4a24;
+        --fg: #f3e6c4;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--fg);
+        background:
+          radial-gradient(ellipse 90% 50% at 50% -10%, rgba(196, 92, 26, 0.28), transparent 55%),
+          linear-gradient(180deg, #1a1008 0%, #0c0704 100%);
+      }
+      main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.5rem; }
+      h1 { font-size: 1.8rem; letter-spacing: 0.04em; color: var(--gold); margin: 0; }
+      h2 { font-size: 1.1rem; color: var(--gold); margin: 0 0 0.75rem; }
+      p, li { color: var(--muted); line-height: 1.45; }
+      code { color: var(--gold); }
+      .frame {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #2c1b10 0%, #1a100b 100%);
+        padding: 1.25rem;
+        margin-top: 1.25rem;
+        box-shadow: 0 0 0 3px #2a1a10, 0 0 0 4px #7a5a28;
+      }
+      label { display: block; font-size: 0.9rem; margin-top: 0.85rem; }
+      input[type="text"], input[type="password"] {
+        width: 100%;
+        margin-top: 0.35rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--line);
+        background: #140c08;
+        color: var(--fg);
+        font: inherit;
+      }
+      .row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; align-items: center; }
+      button {
+        border: 1px solid var(--gold);
+        background: linear-gradient(180deg, #f0d78a 0%, #c9a04a 100%);
+        color: #2a1a0c;
+        font-weight: 700;
+        padding: 0.55rem 1rem;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.ghost {
+        background: rgba(20, 12, 8, 0.6);
+        color: var(--gold);
+      }
+      .status { margin-top: 0.75rem; font-size: 0.9rem; }
+      .ok { color: #9ee0a2; }
+      .err { color: #f0a0a0; }
+      ul.files { padding-left: 1.1rem; margin: 0.5rem 0 0; font-size: 0.85rem; }
+      .log { margin: 0; padding: 0; list-style: none; font-size: 0.82rem; max-height: 14rem; overflow: auto; }
+      .log li { border-top: 1px solid var(--line); padding: 0.4rem 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p style="text-transform:uppercase;letter-spacing:0.28em;font-size:0.75rem;color:var(--gold);margin:0 0 0.5rem">WarcraftEvents.com</p>
+      <h1>Arena uploader</h1>
+      <p>
+        Watches <code>ArenaRankedDuels.lua</code> the same way Warcraft Logs watches the combat log.
+        After a rated session, <code>/reload</code> or log out so WoW flushes SavedVariables.
+      </p>
+      <section class="frame">
+        <h2>Connection</h2>
+        <label>Site URL <input id="siteUrl" type="text" /></label>
+        <label>Uploader token <input id="token" type="password" placeholder="weu_…" /></label>
+        <label>WoW folder (optional) <input id="wowPath" type="text" placeholder="C:\Program Files (x86)\World of Warcraft" /></label>
+        <label class="row" style="margin-top:0.9rem">
+          <input id="autoUpload" type="checkbox" /> Auto-upload when SavedVariables change
+        </label>
+        <div class="row">
+          <button id="save" type="button">Save</button>
+          <button id="scan" class="ghost" type="button">Scan for addon data</button>
+          <button id="upload" class="ghost" type="button">Upload now</button>
+        </div>
+        <p id="status" class="status"></p>
+      </section>
+      <section class="frame">
+        <h2>SavedVariables</h2>
+        <ul id="files" class="files"></ul>
+      </section>
+      <section class="frame">
+        <h2>Log</h2>
+        <ul id="log" class="log"></ul>
+      </section>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      async function api(path, method, body) {
+        const res = await fetch(path, {
+          method,
+          headers: body ? { "content-type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Request failed");
+        return data;
+      }
+      function render(state) {
+        $("siteUrl").value = state.config.siteUrl || "";
+        if (!$("token").value) $("token").placeholder = state.config.hasToken ? "Token saved — leave blank to keep it" : "weu_…";
+        $("wowPath").value = state.config.wowPath || "";
+        $("autoUpload").checked = Boolean(state.config.autoUpload);
+        $("files").innerHTML = state.files.length
+          ? state.files.map((file) => `<li>${file.flavor} · ${file.account}<br><code>${file.path}</code></li>`).join("")
+          : "<li>None found yet. Point at your WoW folder if it is not the default path.</li>";
+        $("log").innerHTML = (state.log || [])
+          .map((item) => `<li>${item.at?.replace("T", " ").slice(0, 19)} — ${item.message}</li>`)
+          .join("");
+        if (state.last) {
+          $("status").className = "status ok";
+          $("status").textContent = `Last upload: ${state.last.inserted} new, ${state.last.merged} merged, reporter ${state.last.reporter}.`;
+        }
+      }
+      async function refresh() {
+        render(await api("/api/state", "GET"));
+      }
+      $("save").onclick = async () => {
+        $("status").textContent = "";
+        try {
+          const body = {
+            siteUrl: $("siteUrl").value,
+            wowPath: $("wowPath").value,
+            autoUpload: $("autoUpload").checked,
+          };
+          if ($("token").value.trim()) body.token = $("token").value.trim();
+          render(await api("/api/config", "POST", body));
+          $("token").value = "";
+          $("status").className = "status ok";
+          $("status").textContent = "Saved. Watching for SavedVariables changes.";
+        } catch (err) {
+          $("status").className = "status err";
+          $("status").textContent = err.message;
+        }
+      };
+      $("scan").onclick = async () => {
+        try {
+          render(await api("/api/scan", "POST", {}));
+        } catch (err) {
+          $("status").className = "status err";
+          $("status").textContent = err.message;
+        }
+      };
+      $("upload").onclick = async () => {
+        $("status").textContent = "Uploading…";
+        try {
+          const state = await api("/api/upload", "POST", {});
+          render(state);
+          $("status").className = "status ok";
+          $("status").textContent = state.result?.skipped
+            ? "Already sent this log."
+            : `Uploaded. ${state.result?.inserted ?? 0} new, ${state.result?.merged ?? 0} merged.`;
+        } catch (err) {
+          $("status").className = "status err";
+          $("status").textContent = err.message;
+        }
+      };
+      refresh().catch((err) => {
+        $("status").className = "status err";
+        $("status").textContent = err.message;
+      });
+    </script>
+  </body>
+</html>
