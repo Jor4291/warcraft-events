@@ -2,48 +2,70 @@ import { emptyStore } from "./seed";
 import { getSql } from "./db";
 import type { EventRecord, LadderMatch, LadderPlayer, StoreData, UserRecord } from "./types";
 
-let schemaReady = false;
+let schemaPromise: Promise<void> | null = null;
+
+function isConcurrentCreateError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("already exists") ||
+    message.includes("pg_type_typname_nsp_index") ||
+    message.includes("duplicate key")
+  );
+}
 
 async function ensureSchema() {
-  if (schemaReady) {
-    return;
+  if (!schemaPromise) {
+    schemaPromise = (async () => {
+      const sql = getSql();
+      const create = async (run: Promise<unknown>) => {
+        try {
+          await run;
+        } catch (error) {
+          if (!isConcurrentCreateError(error)) {
+            throw error;
+          }
+        }
+      };
+      await create(sql`
+        CREATE TABLE IF NOT EXISTS users (
+          id text PRIMARY KEY,
+          email text NOT NULL UNIQUE,
+          display_name text NOT NULL,
+          password_hash text NOT NULL,
+          password_salt text NOT NULL,
+          upload_token_hash text NOT NULL DEFAULT '',
+          is_hub boolean NOT NULL DEFAULT false,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `);
+      await create(sql`
+        CREATE TABLE IF NOT EXISTS events (
+          id text PRIMARY KEY,
+          slug text NOT NULL UNIQUE,
+          data jsonb NOT NULL
+        )
+      `);
+      await create(sql`
+        CREATE TABLE IF NOT EXISTS matches (
+          match_id text PRIMARY KEY,
+          timestamp bigint NOT NULL DEFAULT 0,
+          confirmed boolean NOT NULL DEFAULT false,
+          data jsonb NOT NULL
+        )
+      `);
+      await create(sql`
+        CREATE TABLE IF NOT EXISTS players (
+          name text PRIMARY KEY,
+          points double precision NOT NULL DEFAULT 1500,
+          data jsonb NOT NULL
+        )
+      `);
+    })().catch((error) => {
+      schemaPromise = null;
+      throw error;
+    });
   }
-  const sql = getSql();
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id text PRIMARY KEY,
-      email text NOT NULL UNIQUE,
-      display_name text NOT NULL,
-      password_hash text NOT NULL,
-      password_salt text NOT NULL,
-      upload_token_hash text NOT NULL DEFAULT '',
-      is_hub boolean NOT NULL DEFAULT false,
-      created_at timestamptz NOT NULL DEFAULT now()
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS events (
-      id text PRIMARY KEY,
-      slug text NOT NULL UNIQUE,
-      data jsonb NOT NULL
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS matches (
-      match_id text PRIMARY KEY,
-      timestamp bigint NOT NULL DEFAULT 0,
-      confirmed boolean NOT NULL DEFAULT false,
-      data jsonb NOT NULL
-    )
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS players (
-      name text PRIMARY KEY,
-      points double precision NOT NULL DEFAULT 1500,
-      data jsonb NOT NULL
-    )
-  `;
-  schemaReady = true;
+  await schemaPromise;
 }
 
 function asUser(row: Record<string, unknown>): UserRecord {
