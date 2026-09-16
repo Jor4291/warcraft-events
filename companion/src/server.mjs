@@ -1,5 +1,5 @@
 import { exec } from "child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import http from "http";
 import { homedir } from "os";
 import path from "path";
@@ -11,10 +11,11 @@ const PORT = Number(process.env.UPLOADER_PORT || 4782);
 const PRODUCTION_SITE = "https://warcraftevents.com";
 const configDir = path.join(process.env.APPDATA || path.join(homedir(), ".config"), "WarcraftEventsUploader");
 const configPath = path.join(configDir, "config.json");
+const logPath = path.join(configDir, "uploader.log");
 
 function isPackaged() {
-  const exec = path.basename(process.execPath).toLowerCase();
-  return exec !== "node" && exec !== "node.exe" && exec !== "bun" && exec !== "bun.exe";
+  const exe = path.basename(process.execPath).toLowerCase();
+  return exe !== "node" && exe !== "node.exe" && exe !== "bun" && exe !== "bun.exe";
 }
 
 const defaultConfig = () => ({
@@ -42,15 +43,32 @@ const state = {
   files: [],
   watching: [],
   last: null,
-  lastHash: "",
+  hashes: {},
+  mtimes: {},
+  emptyWarned: {},
+  uploading: false,
   log: [],
   stopWatch: () => undefined,
 };
+
+function writeLogFile(message) {
+  try {
+    mkdirSync(configDir, { recursive: true });
+    if (existsSync(logPath) && statSync(logPath).size > 256 * 1024) {
+      writeFileSync(`${logPath}.old`, readFileSync(logPath));
+      writeFileSync(logPath, "");
+    }
+    appendFileSync(logPath, `${new Date().toISOString()} ${message}\n`);
+  } catch {
+    // Logging must never take down the uploader.
+  }
+}
 
 function log(message, extra = {}) {
   state.log.unshift({ at: new Date().toISOString(), message, ...extra });
   state.log = state.log.slice(0, 40);
   console.log(`[uploader] ${message}`);
+  writeLogFile(message);
 }
 
 function json(response, status, body) {
@@ -104,15 +122,21 @@ async function uploadFile(filePath, reason) {
   }
   const payload = await readPayload(filePath);
   if (!payload) {
-    throw new Error("No ARDU1 uploadJson in that SavedVariables file yet. /reload or log out after a rated duel.");
+    if (!state.emptyWarned[filePath]) {
+      state.emptyWarned[filePath] = true;
+      log("No ARDU1 in that SavedVariables file yet. /reload or log out after a rated duel.");
+    }
+    return { skipped: true };
   }
   const hash = payloadHash(payload);
-  if (hash === state.lastHash) {
-    log("Skipped — same log already sent.");
+  if (hash === state.hashes[filePath]) {
+    if (reason === "manual") {
+      log("Skipped — same log already sent.");
+    }
     return { skipped: true };
   }
   const result = await uploadPayload(state.config.siteUrl, state.config.token, payload);
-  state.lastHash = hash;
+  state.hashes[filePath] = hash;
   state.last = {
     at: new Date().toISOString(),
     reason,
@@ -151,6 +175,50 @@ function startWatching() {
       log(error instanceof Error ? error.message : String(error));
     }
   });
+}
+
+async function pollSavedVariables() {
+  if (state.uploading) {
+    return;
+  }
+  state.uploading = true;
+  try {
+    const before = state.files.map((file) => file.path).join("\n");
+    refreshFiles();
+    const after = state.files.map((file) => file.path).join("\n");
+    if (before !== after) {
+      startWatching();
+      log(
+        state.files.length
+          ? `Found ${state.files.length} SavedVariables file${state.files.length === 1 ? "" : "s"}.`
+          : "SavedVariables list changed; none found.",
+      );
+    } else {
+      startWatching();
+    }
+    if (!state.config.autoUpload || !state.config.token) {
+      return;
+    }
+    for (const file of state.files) {
+      let mtime = 0;
+      try {
+        mtime = statSync(file.path).mtimeMs;
+      } catch {
+        continue;
+      }
+      if (state.mtimes[file.path] === mtime) {
+        continue;
+      }
+      state.mtimes[file.path] = mtime;
+      try {
+        await uploadFile(file.path, "poll");
+      } catch (error) {
+        log(error instanceof Error ? error.message : String(error));
+      }
+    }
+  } finally {
+    state.uploading = false;
+  }
 }
 
 async function handleApi(request, response, url) {
@@ -219,30 +287,30 @@ const server = http.createServer(async (request, response) => {
 const href = `http://127.0.0.1:${PORT}`;
 server.on("error", (error) => {
   if (error && error.code === "EADDRINUSE") {
-    log("Uploader already running — opening it.");
+    log(`Already running at ${href}. Opened that window — leave the first one open.`);
     openBrowser(href);
-    process.exit(0);
+    setTimeout(() => process.exit(0), 8000);
     return;
   }
-  throw error;
+  log(error instanceof Error ? error.message : String(error));
+  setTimeout(() => process.exit(1), 8000);
 });
 refreshFiles();
+if (state.files.length) {
+  log(
+    `Watching ${state.files.length} SavedVariables file${state.files.length === 1 ? "" : "s"}: ${state.files
+      .map((file) => `${file.flavor}/${file.account}`)
+      .join(", ")}.`,
+  );
+} else {
+  log("No Arena Ranked Duels.lua found yet. Install the addon on that client, then /reload.");
+}
 startWatching();
 setInterval(() => {
-  const before = state.files.map((file) => file.path).join("\n");
-  refreshFiles();
-  const after = state.files.map((file) => file.path).join("\n");
-  if (before === after) {
-    return;
-  }
-  startWatching();
-  log(
-    state.files.length
-      ? `Found ${state.files.length} SavedVariables file${state.files.length === 1 ? "" : "s"}.`
-      : "SavedVariables list changed; none found.",
-  );
-}, 15000);
+  void pollSavedVariables();
+}, 8000);
 server.listen(PORT, "127.0.0.1", () => {
-  log(`Uploader listening on ${href}`);
+  log(`Uploader listening on ${href} — keep this window open.`);
   openBrowser(href);
+  void pollSavedVariables();
 });

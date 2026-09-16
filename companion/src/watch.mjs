@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { watch } from "fs";
 import { readFile } from "fs/promises";
+import path from "path";
 import { parseArdu1 } from "./parse.mjs";
 
 export function payloadHash(payload) {
@@ -32,22 +33,46 @@ export async function uploadPayload(siteUrl, token, payload) {
 export function watchFiles(paths, onChange) {
   const watchers = [];
   const timers = new Map();
-  for (const filePath of paths) {
+  const files = [...new Set(paths.filter(Boolean))];
+  const dirs = [...new Set(files.map((filePath) => path.dirname(filePath)))];
+
+  const bounce = (key, filePath) => {
+    clearTimeout(timers.get(key));
+    timers.set(
+      key,
+      setTimeout(() => {
+        onChange(filePath).catch(() => undefined);
+      }, 1500),
+    );
+  };
+
+  for (const dir of dirs) {
+    try {
+      const watcher = watch(dir, { persistent: true }, (_event, filename) => {
+        const name = filename ? String(filename) : "";
+        for (const filePath of files) {
+          if (!name || path.basename(filePath) === name || filePath.endsWith(name)) {
+            bounce(`dir:${filePath}`, filePath);
+          }
+        }
+      });
+      watchers.push(watcher);
+    } catch {
+      // Directory may not be watchable yet; polling still covers it.
+    }
+  }
+
+  for (const filePath of files) {
     try {
       const watcher = watch(filePath, { persistent: true }, () => {
-        clearTimeout(timers.get(filePath));
-        timers.set(
-          filePath,
-          setTimeout(() => {
-            onChange(filePath).catch(() => undefined);
-          }, 1500),
-        );
+        bounce(`file:${filePath}`, filePath);
       });
       watchers.push(watcher);
     } catch {
       // File may not exist yet; scan will retry.
     }
   }
+
   return () => {
     for (const watcher of watchers) {
       watcher.close();
