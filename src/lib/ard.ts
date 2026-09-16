@@ -1,4 +1,4 @@
-import { recomputeLadder, shouldConfirm } from "./rating";
+import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { updateStore } from "./store";
 import type { LadderMatch, MatchReport } from "./types";
 
@@ -18,12 +18,21 @@ type IncomingMatch = {
   expectedWinner?: number;
 };
 
+type IncomingPlayer = {
+  name?: string;
+  class?: string;
+  spec?: string;
+  race?: string;
+  guild?: string;
+};
+
 type IncomingPayload = {
   format?: string;
   reporter?: string;
   reporterIsHub?: boolean;
   exportedAt?: number;
   matches?: IncomingMatch[];
+  players?: IncomingPlayer[];
 };
 
 function asMatch(raw: IncomingMatch): Omit<LadderMatch, "confirmed" | "reports"> | null {
@@ -100,7 +109,21 @@ export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolea
         existing.loserClass = incoming.loserClass;
       }
     }
+    const previousPlayers = data.players;
     data.players = recomputeLadder(data.matches);
+    applyPlayerIdentity(data.players, previousPlayers);
+    applyPlayerIdentity(
+      data.players,
+      (payload.players || [])
+        .filter((player) => player.name)
+        .map((player) => ({
+          name: String(player.name),
+          className: player.class ? String(player.class) : undefined,
+          spec: player.spec ? String(player.spec) : undefined,
+          race: player.race ? String(player.race) : undefined,
+          guild: player.guild ? String(player.guild) : undefined,
+        })),
+    );
   });
 
   return {

@@ -58,6 +58,23 @@ export function recomputeLadder(matches: LadderMatch[]): LadderPlayer[] {
   return [...byName.values()].sort((a, b) => b.points - a.points || b.wins - a.wins);
 }
 
+export function applyPlayerIdentity(
+  players: LadderPlayer[],
+  identities: Array<{ name: string; className?: string; spec?: string; race?: string; guild?: string }>,
+) {
+  const byName = new Map(players.map((player) => [player.name.toLowerCase(), player]));
+  for (const identity of identities) {
+    const dest = byName.get(identity.name.toLowerCase());
+    if (!dest) {
+      continue;
+    }
+    if (identity.className) dest.className = identity.className;
+    if (identity.spec) dest.spec = identity.spec;
+    if (identity.race) dest.race = identity.race;
+    if (identity.guild) dest.guild = identity.guild;
+  }
+}
+
 export function shouldConfirm(reports: { reporter: string; hub: boolean }[]) {
   if (reports.some((report) => report.hub)) {
     return true;

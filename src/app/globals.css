@@ -159,6 +159,51 @@ button {
   background: rgba(80, 50, 16, 0.45);
 }
 
+.ladder-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--gold-dim);
+  background: rgba(20, 12, 8, 0.6);
+  color: var(--gold);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ladder-chip:hover,
+.ladder-chip.is-active {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  background: rgba(80, 50, 16, 0.45);
+}
+
+.ladder-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ladder-name:hover {
+  text-decoration: underline;
+}
+
+.ladder-sort {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ladder-sort.is-active {
+  color: var(--gold-bright);
+}
+
 .tavern-title {
   font-family: var(--font-display), serif;
   letter-spacing: 0.04em;

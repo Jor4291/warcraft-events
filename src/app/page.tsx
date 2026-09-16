@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatClassName } from "@/lib/display";
+import { classColor, formatClassName } from "@/lib/display";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +85,8 @@ export default async function HomePage() {
               {top.map((player, index) => (
                 <li key={player.name} className="flex justify-between gap-4">
                   <span>
-                    {index + 1}. {player.name}
+                    {index + 1}.{" "}
+                    <span style={{ color: classColor(player.className) }}>{player.name}</span>
                     <span className="text-[var(--muted)]"> {formatClassName(player.className)}</span>
                   </span>
                   <span className="text-[var(--gold)]">{player.points.toFixed(0)}</span>
