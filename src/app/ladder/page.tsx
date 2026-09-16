@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LadderSetupLinks } from "@/components/UploaderDownloadLink";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,9 @@ export default async function LadderPage() {
         <Link href="/ladder/upload" className="tavern-btn no-underline">
           Submit a duel log
         </Link>
+      </div>
+      <div className="mb-6">
+        <LadderSetupLinks />
       </div>
       <p className="mb-4 text-sm text-[var(--muted)]">
         {store.matches.length} stored matches · {pending} pending confirmation · {store.players.length} players

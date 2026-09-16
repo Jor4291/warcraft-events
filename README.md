@@ -43,10 +43,11 @@ npm run db:migrate
 
 ## Addon → site
 
-WoW cannot HTTP. Two ways to get `ARDU1` onto the ladder:
+WoW cannot HTTP. Three pieces get `ARDU1` onto the ladder:
 
-1. **Uploader (preferred)** — download [WarcraftEventsUploader.exe](https://github.com/Jor4291/warcraft-events/releases/download/uploader/WarcraftEventsUploader.exe) from GitHub Releases (also linked on `/account` and `/ladder/upload`). Sign in on the site, create a token, paste it into the app. It watches `ArenaRankedDuels.lua`. After a session, `/reload` or log out so SavedVariables flush. Developers can still run `npm run uploader`.
-2. **Paste** — `/ard upload` in game, then `/ladder/upload`.
+1. **Addon** — [Arena Ranked Duels on CurseForge](https://www.curseforge.com/wow/addons/arena-ranked-duels).
+2. **Uploader (preferred)** — download [WarcraftEventsUploader.exe](https://github.com/Jor4291/warcraft-events/releases/download/uploader/WarcraftEventsUploader.exe) from GitHub Releases (also linked on `/account` and `/ladder/upload`). Sign in on the site, create a token, paste it into the app. It watches `ArenaRankedDuels.lua`. After a session, `/reload` or log out so SavedVariables flush. Developers can still run `npm run uploader`.
+3. **Paste** — `/ard upload` in game, then `/ladder/upload`.
 
 `POST /api/ard/upload` accepts the JSON. Send `Authorization: Bearer weu_…` from the uploader.
 

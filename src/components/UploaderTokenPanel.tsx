@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { generateUploadToken } from "@/lib/actions";
-import { UploaderDownloadLink } from "@/components/UploaderDownloadLink";
+import { LadderSetupLinks } from "@/components/UploaderDownloadLink";
 
 export function UploaderTokenPanel({
   displayName,
@@ -28,17 +28,17 @@ export function UploaderTokenPanel({
         Hub confirmation is never taken from the addon JSON. A token on {displayName}
         {hub ? " can confirm as hub" : " uploads as a normal reporter"}.
       </p>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <UploaderDownloadLink />
+      <div className="mt-4">
+        <LadderSetupLinks />
       </div>
       <p className="mt-2 text-xs text-[var(--muted)]">
         Windows may warn that the file is unsigned. Choose More info, then Run anyway. Site URL in the app should
         be <code>https://warcraftevents.com</code>.
       </p>
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-[var(--muted)]">
-        <li>Download and run the uploader.</li>
-        <li>Create a token below.</li>
-        <li>Paste the token in the app and scan for <code>ArenaRankedDuels.lua</code>.</li>
+        <li>Install Arena Ranked Duels from CurseForge.</li>
+        <li>Download and run the Windows uploader.</li>
+        <li>Create a token below, paste it in the app, and scan for <code>ArenaRankedDuels.lua</code>.</li>
       </ol>
       <form
         className="mt-4"

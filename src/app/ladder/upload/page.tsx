@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { uploadLadderJson } from "@/lib/actions";
-import { UploaderDownloadLink } from "@/components/UploaderDownloadLink";
+import { LadderSetupLinks } from "@/components/UploaderDownloadLink";
 
 export default function UploadPage() {
   const [jsonText, setJsonText] = useState("");
@@ -18,7 +18,7 @@ export default function UploadPage() {
         a log — only confirmed fights (two reporters, or a hub token) change the Arena Leaderboard.
       </p>
       <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
-        <UploaderDownloadLink />
+        <LadderSetupLinks />
         <span className="text-sm text-[var(--muted)]">Then create a token on your account page.</span>
       </div>
       <form

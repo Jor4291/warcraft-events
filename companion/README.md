@@ -6,7 +6,7 @@ It does **not** read the combat log. It reads `WTF\Account\<account>\SavedVariab
 
 ## Players
 
-Download [WarcraftEventsUploader.exe](https://github.com/Jor4291/warcraft-events/releases/download/uploader/WarcraftEventsUploader.exe). Double-click it. Site URL defaults to `https://warcraftevents.com`. Windows SmartScreen may warn because the exe is unsigned — More info → Run anyway.
+Download [WarcraftEventsUploader.exe](https://github.com/Jor4291/warcraft-events/releases/download/uploader/WarcraftEventsUploader.exe). Install [Arena Ranked Duels](https://www.curseforge.com/wow/addons/arena-ranked-duels) from CurseForge first. Double-click the exe. Site URL defaults to `https://warcraftevents.com`. Windows SmartScreen may warn because the exe is unsigned — More info → Run anyway.
 
 GitHub Actions rebuilds that file whenever `companion/` changes on `main`.
 
