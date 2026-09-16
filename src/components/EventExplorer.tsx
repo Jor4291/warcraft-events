@@ -157,11 +157,7 @@ function MonthView({ cells }: { cells: { day: number | null; events: CalendarEve
                 <p className="text-xs font-bold text-[#6a3b0c]">{cell.day}</p>
                 <div className="mt-1 space-y-1">
                   {cell.events.map((event) => (
-                    <Link
-                      key={event.slug}
-                      href={`/events/${event.slug}`}
-                      className="block truncate bg-[#6a3b0c] px-1.5 py-1 text-[11px] leading-tight text-[#f8e7a8] no-underline hover:bg-[#8a4e12]"
-                    >
+                    <Link key={event.slug} href={`/events/${event.slug}`} className="calendar-chip">
                       {event.title}
                     </Link>
                   ))}

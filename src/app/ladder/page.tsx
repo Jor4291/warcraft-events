@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LadderSetupLinks } from "@/components/UploaderDownloadLink";
+import { formatClassName } from "@/lib/display";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export default async function LadderPage() {
             <tr>
               <th className="px-4 py-3">#</th>
               <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Spec</th>
+              <th className="px-4 py-3">Class</th>
               <th className="px-4 py-3">Record</th>
               <th className="px-4 py-3">Rating</th>
             </tr>
@@ -52,7 +53,7 @@ export default async function LadderPage() {
                 <tr key={player.name} className="border-t border-[var(--line)]">
                   <td className="px-4 py-2">{index + 1}</td>
                   <td className="px-4 py-2">{player.name}</td>
-                  <td className="px-4 py-2 text-[var(--muted)]">{player.spec || player.className || "—"}</td>
+                  <td className="px-4 py-2 text-[var(--muted)]">{formatClassName(player.className) || "—"}</td>
                   <td className="px-4 py-2">
                     {player.wins}-{player.losses}
                   </td>

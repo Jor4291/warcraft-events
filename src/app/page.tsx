@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatClassName } from "@/lib/display";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +86,7 @@ export default async function HomePage() {
                 <li key={player.name} className="flex justify-between gap-4">
                   <span>
                     {index + 1}. {player.name}
-                    <span className="text-[var(--muted)]"> {player.spec || player.className}</span>
+                    <span className="text-[var(--muted)]"> {formatClassName(player.className)}</span>
                   </span>
                   <span className="text-[var(--gold)]">{player.points.toFixed(0)}</span>
                 </li>
