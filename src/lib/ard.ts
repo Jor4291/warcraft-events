@@ -1,4 +1,5 @@
 import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
+import { canonicalizeMatchId, characterName, namesEqual } from "./player-name";
 import { updateStore } from "./store";
 import type { LadderMatch, MatchReport } from "./types";
 
@@ -40,10 +41,10 @@ function asMatch(raw: IncomingMatch): Omit<LadderMatch, "confirmed" | "reports">
     return null;
   }
   return {
-    matchId: String(raw.matchId),
+    matchId: canonicalizeMatchId(String(raw.matchId)),
     timestamp: Number(raw.timestamp) || 0,
-    winner: String(raw.winner),
-    loser: String(raw.loser),
+    winner: characterName(String(raw.winner)) || String(raw.winner),
+    loser: characterName(String(raw.loser)) || String(raw.loser),
     winnerClass: String(raw.winnerClass || ""),
     winnerSpec: String(raw.winnerSpec || ""),
     loserClass: String(raw.loserClass || ""),
@@ -62,7 +63,7 @@ export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolea
     throw new Error("Expected ARDU1 JSON with a matches array.");
   }
 
-  const reporter = String(payload.reporter || "unknown");
+  const reporter = characterName(String(payload.reporter || "unknown")) || String(payload.reporter || "unknown");
   const hub = Boolean(options?.trustedHub);
   const exportedAt = Number(payload.exportedAt) || Math.floor(Date.now() / 1000);
   const report: MatchReport = { reporter, hub, exportedAt };
@@ -92,9 +93,7 @@ export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolea
         continue;
       }
       merged += 1;
-      const already = existing.reports.some(
-        (item) => item.reporter.toLowerCase() === reporter.toLowerCase(),
-      );
+      const already = existing.reports.some((item) => namesEqual(item.reporter, reporter));
       if (!already) {
         existing.reports.push(report);
       }
@@ -117,7 +116,7 @@ export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolea
       (payload.players || [])
         .filter((player) => player.name)
         .map((player) => ({
-          name: String(player.name),
+          name: characterName(String(player.name)) || String(player.name),
           className: player.class ? String(player.class) : undefined,
           spec: player.spec ? String(player.spec) : undefined,
           race: player.race ? String(player.race) : undefined,

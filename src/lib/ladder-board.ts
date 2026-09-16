@@ -1,4 +1,5 @@
 import { classToken, formatClassName } from "./display";
+import { namesEqual } from "./player-name";
 import type { LadderMatch, LadderPlayer } from "./types";
 
 export type GroupBy = "overall" | "class" | "race" | "guild";
@@ -36,9 +37,7 @@ export function formatWinRate(rate: number, games: number) {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
-export function namesEqual(a: string, b: string) {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
+export { namesEqual };
 
 function groupValue(player: LadderPlayer, groupBy: Exclude<GroupBy, "overall">) {
   if (groupBy === "class") {

@@ -1,4 +1,5 @@
-import type { LadderMatch, LadderPlayer } from "./types";
+import { canonicalPlayerName, canonicalizeMatchId, characterName, namesEqual } from "./player-name";
+import type { LadderMatch, LadderPlayer, StoreData } from "./types";
 
 const START = 1500;
 const K = 24;
@@ -16,7 +17,10 @@ export function recomputeLadder(matches: LadderMatch[]): LadderPlayer[] {
   const byName = new Map<string, LadderPlayer>();
 
   const ensure = (name: string, className = "", spec = "", race = "", guild = "") => {
-    const key = name;
+    const key = canonicalPlayerName(name);
+    if (!key) {
+      return null;
+    }
     const existing = byName.get(key);
     if (existing) {
       if (!existing.className && className) existing.className = className;
@@ -26,7 +30,7 @@ export function recomputeLadder(matches: LadderMatch[]): LadderPlayer[] {
       return existing;
     }
     const created: LadderPlayer = {
-      name,
+      name: characterName(name),
       className,
       spec,
       race,
@@ -42,8 +46,14 @@ export function recomputeLadder(matches: LadderMatch[]): LadderPlayer[] {
   };
 
   for (const match of confirmed) {
+    if (namesEqual(match.winner, match.loser)) {
+      continue;
+    }
     const winner = ensure(match.winner, match.winnerClass, match.winnerSpec);
     const loser = ensure(match.loser, match.loserClass, match.loserSpec);
+    if (!winner || !loser) {
+      continue;
+    }
     const p = expected(winner.points, loser.points);
     const delta = K * (1 - p);
     winner.points += delta;
@@ -62,9 +72,9 @@ export function applyPlayerIdentity(
   players: LadderPlayer[],
   identities: Array<{ name: string; className?: string; spec?: string; race?: string; guild?: string }>,
 ) {
-  const byName = new Map(players.map((player) => [player.name.toLowerCase(), player]));
+  const byName = new Map(players.map((player) => [canonicalPlayerName(player.name), player]));
   for (const identity of identities) {
-    const dest = byName.get(identity.name.toLowerCase());
+    const dest = byName.get(canonicalPlayerName(identity.name));
     if (!dest) {
       continue;
     }
@@ -79,6 +89,72 @@ export function shouldConfirm(reports: { reporter: string; hub: boolean }[]) {
   if (reports.some((report) => report.hub)) {
     return true;
   }
-  const unique = new Set(reports.map((report) => report.reporter.toLowerCase()));
+  const unique = new Set(reports.map((report) => canonicalPlayerName(report.reporter) || report.reporter.toLowerCase()));
   return unique.size >= 2;
+}
+
+function mergeReports(into: { reporter: string; hub: boolean; exportedAt: number }[], extra: { reporter: string; hub: boolean; exportedAt: number }[]) {
+  for (const report of extra) {
+    const reporter = characterName(report.reporter) || report.reporter;
+    const already = into.some((item) => namesEqual(item.reporter, reporter));
+    if (!already) {
+      into.push({ ...report, reporter });
+    }
+  }
+}
+
+export function mergeLadderMatches(matches: LadderMatch[]): LadderMatch[] {
+  const byId = new Map<string, LadderMatch>();
+  for (const match of matches) {
+    const winner = characterName(match.winner) || match.winner;
+    const loser = characterName(match.loser) || match.loser;
+    const matchId = canonicalizeMatchId(match.matchId);
+    const reports = match.reports.map((report) => ({
+      ...report,
+      reporter: characterName(report.reporter) || report.reporter,
+    }));
+    const existing = byId.get(matchId);
+    if (!existing) {
+      byId.set(matchId, {
+        ...match,
+        matchId,
+        winner,
+        loser,
+        reports,
+        confirmed: shouldConfirm(reports),
+      });
+      continue;
+    }
+    mergeReports(existing.reports, reports);
+    existing.confirmed = shouldConfirm(existing.reports);
+    if (!existing.winnerClass && match.winnerClass) existing.winnerClass = match.winnerClass;
+    if (!existing.loserClass && match.loserClass) existing.loserClass = match.loserClass;
+    if (!existing.winnerSpec && match.winnerSpec) existing.winnerSpec = match.winnerSpec;
+    if (!existing.loserSpec && match.loserSpec) existing.loserSpec = match.loserSpec;
+    if (match.timestamp && (!existing.timestamp || match.timestamp < existing.timestamp)) {
+      existing.timestamp = match.timestamp;
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp || a.matchId.localeCompare(b.matchId));
+}
+
+export function normalizeLadderIdentities(data: StoreData): StoreData {
+  const matches = mergeLadderMatches(data.matches);
+  const players = recomputeLadder(matches);
+  applyPlayerIdentity(players, data.players);
+  return { ...data, matches, players };
+}
+
+export function ladderIdentitiesChanged(before: StoreData, after: StoreData) {
+  if (before.players.length !== after.players.length || before.matches.length !== after.matches.length) {
+    return true;
+  }
+  const beforeKeys = before.players.map((player) => player.name).sort().join("\n");
+  const afterKeys = after.players.map((player) => player.name).sort().join("\n");
+  if (beforeKeys !== afterKeys) {
+    return true;
+  }
+  const beforeIds = before.matches.map((match) => match.matchId).sort().join("\n");
+  const afterIds = after.matches.map((match) => match.matchId).sort().join("\n");
+  return beforeIds !== afterIds;
 }

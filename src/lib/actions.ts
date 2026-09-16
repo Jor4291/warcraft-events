@@ -86,7 +86,7 @@ export async function generateUploadToken() {
     return { error: "Sign in to create an uploader key." };
   }
   const token = `weu_${randomBytes(24).toString("hex")}`;
-  const isHub = hubNameList().includes(user.displayName.trim().toLowerCase());
+  const isHub = hubNameList().includes(canonicalPlayerName(user.displayName) || user.displayName.trim().toLowerCase());
   await updateStore((data) => {
     const target = data.users.find((item) => item.id === user.id);
     if (!target) {

@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { PublicUser, UserRecord } from "./types";
 
@@ -114,7 +115,7 @@ export function hashUploadToken(token: string) {
 export function hubNameList() {
   return (process.env.HUB_NAMES || "Sgtpepper")
     .split(",")
-    .map((name) => name.trim().toLowerCase())
+    .map((name) => canonicalPlayerName(name) || name.trim().toLowerCase())
     .filter(Boolean);
 }
 
@@ -122,7 +123,7 @@ export function isHubAccount(displayName: string, isHubFlag: boolean) {
   if (isHubFlag) {
     return true;
   }
-  return hubNameList().includes(displayName.trim().toLowerCase());
+  return hubNameList().includes(canonicalPlayerName(displayName) || displayName.trim().toLowerCase());
 }
 
 export async function getUserByUploadToken(token: string) {
