@@ -9,7 +9,7 @@
     "lint": "eslint",
     "uploader": "node companion/src/server.mjs",
     "uploader:embed": "node companion/scripts/embed-ui.mjs",
-    "uploader:test": "node --test companion/src/parse.test.mjs",
+    "uploader:test": "node --test companion/src/parse.test.mjs companion/src/wow.test.mjs",
     "uploader:build": "node companion/scripts/embed-ui.mjs && npx esbuild companion/src/server.mjs --bundle --platform=node --format=cjs --outfile=dist/uploader.cjs && npx pkg dist/uploader.cjs --targets node22-win-x64 --output dist/WarcraftEventsUploader.exe",
     "db:migrate": "npx tsx --env-file=.env.local scripts/migrate-json-to-neon.ts"
   },

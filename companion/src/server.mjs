@@ -228,6 +228,20 @@ server.on("error", (error) => {
 });
 refreshFiles();
 startWatching();
+setInterval(() => {
+  const before = state.files.map((file) => file.path).join("\n");
+  refreshFiles();
+  const after = state.files.map((file) => file.path).join("\n");
+  if (before === after) {
+    return;
+  }
+  startWatching();
+  log(
+    state.files.length
+      ? `Found ${state.files.length} SavedVariables file${state.files.length === 1 ? "" : "s"}.`
+      : "SavedVariables list changed; none found.",
+  );
+}, 15000);
 server.listen(PORT, "127.0.0.1", () => {
   log(`Uploader listening on ${href}`);
   openBrowser(href);

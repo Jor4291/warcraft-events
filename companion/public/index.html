@@ -118,7 +118,7 @@
         $("autoUpload").checked = Boolean(state.config.autoUpload);
         $("files").innerHTML = state.files.length
           ? state.files.map((file) => `<li>${file.flavor} · ${file.account}<br><code>${file.path}</code></li>`).join("")
-          : "<li>None found yet. Point at your WoW folder if it is not the default path.</li>";
+          : "<li>None found yet. Click Scan after <code>/reload</code>. The addon must be installed in that client&apos;s AddOns folder (Retail and Forever are different folders).</li>";
         $("log").innerHTML = (state.log || [])
           .map((item) => `<li>${item.at?.replace("T", " ").slice(0, 19)} — ${item.message}</li>`)
           .join("");

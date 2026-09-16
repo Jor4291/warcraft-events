@@ -1,7 +1,6 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import path from "path";
 
-const FLAVORS = ["_retail_", "_classic_", "_classic_era_", "_classic_ptr_", "_ptr_", "_beta_"];
 const SAVED_FILES = ["Arena Ranked Duels.lua", "ArenaRankedDuels.lua"];
 
 function candidateRoots() {
@@ -23,13 +22,59 @@ function candidateRoots() {
   return [...new Set(roots)];
 }
 
-function flavorDirs(installRoot) {
-  if (!existsSync(installRoot)) {
+function hasAccountFolder(dir) {
+  return existsSync(path.join(dir, "WTF", "Account"));
+}
+
+function locateRoot(input) {
+  if (!input) {
+    return "";
+  }
+  let dir = input;
+  try {
+    if (existsSync(dir) && statSync(dir).isFile()) {
+      dir = path.dirname(dir);
+    }
+  } catch {
+    return input;
+  }
+  let current = dir;
+  for (let i = 0; i < 8; i += 1) {
+    if (hasAccountFolder(current)) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+  return dir;
+}
+
+export function flavorDirs(installRoot) {
+  const root = locateRoot(installRoot);
+  if (!root || !existsSync(root)) {
     return [];
   }
-  const found = FLAVORS.map((flavor) => path.join(installRoot, flavor)).filter((dir) => existsSync(dir));
-  if (existsSync(path.join(installRoot, "WTF"))) {
-    found.unshift(installRoot);
+  const found = [];
+  if (hasAccountFolder(root)) {
+    found.push(root);
+  }
+  let entries = [];
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith(".")) {
+      continue;
+    }
+    const dir = path.join(root, entry.name);
+    if (hasAccountFolder(dir)) {
+      found.push(dir);
+    }
   }
   return found;
 }
@@ -60,7 +105,7 @@ function accountFiles(flavorDir) {
 }
 
 export function discoverSavedVariables(customRoot = "") {
-  const roots = customRoot ? [customRoot, ...candidateRoots()] : candidateRoots();
+  const roots = customRoot && existsSync(customRoot) ? [customRoot] : candidateRoots();
   const files = [];
   const seen = new Set();
   for (const root of roots) {
