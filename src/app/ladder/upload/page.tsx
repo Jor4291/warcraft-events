@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { uploadLadderJson } from "@/lib/actions";
+import { UploaderDownloadLink } from "@/components/UploaderDownloadLink";
 
 export default function UploadPage() {
   const [jsonText, setJsonText] = useState("");
@@ -11,11 +12,15 @@ export default function UploadPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <h1 className="tavern-title text-3xl">Submit a duel log</h1>
-      <p className="mt-2 mb-6 text-[var(--muted)]">
+      <p className="mt-2 text-[var(--muted)]">
         Lua cannot talk to the website, so a desktop uploader watches SavedVariables and POSTs for you. Paste
         remains the fallback: run <code>/ard upload</code>, copy the JSON, and submit it here. Anyone may paste
         a log — only confirmed fights (two reporters, or a hub token) change the Arena Leaderboard.
       </p>
+      <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
+        <UploaderDownloadLink />
+        <span className="text-sm text-[var(--muted)]">Then create a token on your account page.</span>
+      </div>
       <form
         className="space-y-4"
         action={async () => {

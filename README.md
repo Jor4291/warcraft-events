@@ -45,7 +45,7 @@ npm run db:migrate
 
 WoW cannot HTTP. Two ways to get `ARDU1` onto the ladder:
 
-1. **Uploader (preferred)** — `npm run uploader` or `companion/start-uploader.bat`. Sign in on the site, create a token on `/account`, paste it into the local app. It watches `ArenaRankedDuels.lua`. After a session, `/reload` or log out so SavedVariables flush.
+1. **Uploader (preferred)** — download [WarcraftEventsUploader.exe](https://github.com/Jor4291/warcraft-events/releases/download/uploader/WarcraftEventsUploader.exe) from GitHub Releases (also linked on `/account` and `/ladder/upload`). Sign in on the site, create a token, paste it into the app. It watches `ArenaRankedDuels.lua`. After a session, `/reload` or log out so SavedVariables flush. Developers can still run `npm run uploader`.
 2. **Paste** — `/ard upload` in game, then `/ladder/upload`.
 
 `POST /api/ard/upload` accepts the JSON. Send `Authorization: Bearer weu_…` from the uploader.

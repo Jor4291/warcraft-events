@@ -1,0 +1,36 @@
+name: Uploader
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - companion/**
+      - .github/workflows/uploader.yml
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build Windows exe
+        run: npm ci
+      - name: Compile
+        run: npm run uploader:build
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view uploader 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create uploader --title "Arena Uploader" --notes "Windows desktop uploader for WarcraftEvents.com. Double-click the exe, sign in on the site, paste your token, then /reload or log out after a rated session." --latest
+          }
+          gh release upload uploader dist/WarcraftEventsUploader.exe --clobber

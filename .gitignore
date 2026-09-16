@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local json store
 /data/store.json
+
+# packaged uploader
+/dist

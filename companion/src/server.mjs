@@ -1,19 +1,24 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { exec } from "child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import http from "http";
 import { homedir } from "os";
 import path from "path";
-import { fileURLToPath } from "url";
+import { INDEX_HTML } from "./ui-html.mjs";
 import { discoverSavedVariables } from "./wow.mjs";
 import { payloadHash, readPayload, uploadPayload, watchFiles } from "./watch.mjs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.UPLOADER_PORT || 4782);
-const publicDir = path.join(__dirname, "..", "public");
+const PRODUCTION_SITE = "https://warcraftevents.com";
 const configDir = path.join(process.env.APPDATA || path.join(homedir(), ".config"), "WarcraftEventsUploader");
 const configPath = path.join(configDir, "config.json");
 
+function isPackaged() {
+  const exec = path.basename(process.execPath).toLowerCase();
+  return exec !== "node" && exec !== "node.exe" && exec !== "bun" && exec !== "bun.exe";
+}
+
 const defaultConfig = () => ({
-  siteUrl: process.env.WE_SITE_URL || "http://localhost:3000",
+  siteUrl: process.env.WE_SITE_URL || (isPackaged() ? PRODUCTION_SITE : "http://localhost:3000"),
   token: "",
   wowPath: "",
   autoUpload: true,
@@ -31,13 +36,6 @@ function saveConfig(next) {
   mkdirSync(configDir, { recursive: true });
   writeFileSync(configPath, JSON.stringify(next, null, 2), "utf8");
 }
-
-const mime = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".svg": "image/svg+xml",
-};
 
 const state = {
   config: loadConfig(),
@@ -132,6 +130,12 @@ async function uploadFile(filePath, reason) {
   return result;
 }
 
+function openBrowser(href) {
+  if (process.platform === "win32") {
+    exec(`cmd /c start "" "${href}"`);
+  }
+}
+
 function startWatching() {
   state.stopWatch();
   const paths = state.files.map((file) => file.path);
@@ -200,27 +204,31 @@ const server = http.createServer(async (request, response) => {
       await handleApi(request, response, url);
       return;
     }
-    const relative = url.pathname === "/" ? "/index.html" : url.pathname;
-    const filePath = path.normalize(path.join(publicDir, relative));
-    if (!filePath.startsWith(publicDir) || !existsSync(filePath)) {
-      response.writeHead(404);
-      response.end("Not found");
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(INDEX_HTML);
       return;
     }
-    const ext = path.extname(filePath);
-    response.writeHead(200, { "content-type": mime[ext] || "application/octet-stream" });
-    response.end(readFileSync(filePath));
+    response.writeHead(404);
+    response.end("Not found");
   } catch (error) {
     json(response, 500, { error: error instanceof Error ? error.message : String(error) });
   }
 });
 
+const href = `http://127.0.0.1:${PORT}`;
+server.on("error", (error) => {
+  if (error && error.code === "EADDRINUSE") {
+    log("Uploader already running — opening it.");
+    openBrowser(href);
+    process.exit(0);
+    return;
+  }
+  throw error;
+});
 refreshFiles();
 startWatching();
 server.listen(PORT, "127.0.0.1", () => {
-  const href = `http://127.0.0.1:${PORT}`;
   log(`Uploader listening on ${href}`);
-  if (process.platform === "win32") {
-    import("child_process").then(({ exec }) => exec(`cmd /c start "" "${href}"`));
-  }
+  openBrowser(href);
 });
