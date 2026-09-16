@@ -28,10 +28,18 @@ Open [http://localhost:3000](http://localhost:3000).
 
 1. Repo is created from this folder.
 2. [vercel.com/new](https://vercel.com/new) → import the GitHub repo.
-3. Set `ADMIN_PASSWORD` in Vercel project env.
+3. Set `ADMIN_PASSWORD`, `HUB_NAMES`, and `DATABASE_URL` in Vercel project env.
 4. At SiteGround DNS, add Vercel’s records for `WarcraftEvents.com` (and `www`). Leave SiteGround mail records alone if you still use that email.
 
-Until a database is attached, the store is a JSON file locally and **in-memory on Vercel** (cold starts reset data). Neon Postgres is the next persistence step.
+## Database (Neon)
+
+Set `DATABASE_URL` to a Neon pooled connection string (`...neon.tech/...sslmode=require`). The app creates tables on first read. Without `DATABASE_URL`, local still uses `data/store.json`.
+
+To copy your current local JSON into Neon:
+
+```bash
+npm run db:migrate
+```
 
 ## Addon → site
 

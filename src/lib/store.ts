@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { emptyStore } from "./seed";
+import { hasDatabase } from "./db";
+import { readPostgres, writePostgres } from "./store-pg";
 import type { EventRecord, StoreData, UserRecord } from "./types";
 
 const storePath = path.join(process.cwd(), "data", "store.json");
@@ -44,7 +46,7 @@ function normalize(data: Partial<StoreData> | StoreData): StoreData {
   };
 }
 
-async function readStore(): Promise<StoreData> {
+async function readFileStore(): Promise<StoreData> {
   try {
     const raw = await readFile(storePath, "utf8");
     memory = normalize(JSON.parse(raw) as Partial<StoreData>);
@@ -52,20 +54,36 @@ async function readStore(): Promise<StoreData> {
   } catch {
     if (!memory) {
       memory = emptyStore();
-      await persist(memory).catch(() => undefined);
+      await persistFile(memory).catch(() => undefined);
     }
     return clone(memory);
   }
 }
 
-async function persist(data: StoreData) {
+async function persistFile(data: StoreData) {
   memory = clone(normalize(data));
   try {
     await mkdir(path.dirname(storePath), { recursive: true });
     await writeFile(storePath, JSON.stringify(memory, null, 2), "utf8");
   } catch {
-    // Read-only hosts (Vercel) keep the in-memory copy for this instance only.
+    // Read-only hosts without DATABASE_URL keep the in-memory copy for this instance only.
   }
+}
+
+async function readStore(): Promise<StoreData> {
+  if (hasDatabase()) {
+    return normalize(await readPostgres());
+  }
+  return readFileStore();
+}
+
+async function persist(data: StoreData) {
+  const next = normalize(data);
+  if (hasDatabase()) {
+    await writePostgres(next);
+    return;
+  }
+  await persistFile(next);
 }
 
 export async function getStore(): Promise<StoreData> {
