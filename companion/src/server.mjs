@@ -183,7 +183,7 @@ async function handleApi(request, response, url) {
     const body = await readBody(request);
     const target = body.path || state.files[0]?.path;
     if (!target) {
-      json(response, 400, { error: "No ArenaRankedDuels.lua found. Set your WoW folder." });
+      json(response, 400, { error: "No Arena Ranked Duels.lua found. Set your WoW folder." });
       return;
     }
     try {

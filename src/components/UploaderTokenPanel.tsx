@@ -38,7 +38,7 @@ export function UploaderTokenPanel({
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-[var(--muted)]">
         <li>Install Arena Ranked Duels from CurseForge.</li>
         <li>Download and run the Windows uploader.</li>
-        <li>Create a token below, paste it in the app, and scan for <code>ArenaRankedDuels.lua</code>.</li>
+        <li>Create a token below, paste it in the app, and scan for <code>Arena Ranked Duels.lua</code>.</li>
       </ol>
       <form
         className="mt-4"

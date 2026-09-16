@@ -2,7 +2,7 @@
 
 A local watcher, same idea as the Warcraft Logs client: WoW writes a file, this app POSTs it.
 
-It does **not** read the combat log. It reads `WTF\Account\<account>\SavedVariables\ArenaRankedDuels.lua` and sends the addon’s `uploadJson` (ARDU1) to `POST /api/ard/upload`.
+It does **not** read the combat log. It reads `WTF\Account\<account>\SavedVariables\Arena Ranked Duels.lua` and sends the addon’s `uploadJson` (ARDU1) to `POST /api/ard/upload`.
 
 ## Players
 

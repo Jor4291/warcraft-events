@@ -2,12 +2,14 @@ import { existsSync, readdirSync, statSync } from "fs";
 import path from "path";
 
 const FLAVORS = ["_retail_", "_classic_", "_classic_era_", "_classic_ptr_", "_ptr_", "_beta_"];
-const SAVED_FILE = "ArenaRankedDuels.lua";
+const SAVED_FILES = ["Arena Ranked Duels.lua", "ArenaRankedDuels.lua"];
 
 function candidateRoots() {
   const roots = [
     process.env["ProgramFiles(x86)"],
     process.env.ProgramFiles,
+    "C:\\Program Files (x86)",
+    "C:\\Program Files",
     "C:\\",
     "D:\\",
     "E:\\",
@@ -42,14 +44,16 @@ function accountFiles(flavorDir) {
     if (account === "SavedVariables" || account.startsWith(".")) {
       continue;
     }
-    const file = path.join(accountRoot, account, "SavedVariables", SAVED_FILE);
-    if (existsSync(file)) {
-      files.push({
-        account,
-        flavor: path.basename(flavorDir),
-        path: file,
-        mtime: statSync(file).mtimeMs,
-      });
+    for (const savedFile of SAVED_FILES) {
+      const file = path.join(accountRoot, account, "SavedVariables", savedFile);
+      if (existsSync(file)) {
+        files.push({
+          account,
+          flavor: path.basename(flavorDir),
+          path: file,
+          mtime: statSync(file).mtimeMs,
+        });
+      }
     }
   }
   return files;
