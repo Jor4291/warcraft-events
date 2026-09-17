@@ -45,8 +45,8 @@ export default async function HomePage() {
           <Link href="/events" className="tavern-btn-ghost no-underline">
             Calendar
           </Link>
-          <Link href="/bracket" className="tavern-btn-ghost no-underline">
-            Bracket
+          <Link href="/ladder" className="tavern-btn-ghost no-underline">
+            Arena Rankings
           </Link>
         </div>
       </section>
