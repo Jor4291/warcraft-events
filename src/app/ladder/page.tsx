@@ -13,7 +13,7 @@ export default async function LadderPage({
 }) {
   const { player = "" } = await searchParams;
   const store = await getStore();
-  const pending = store.matches.filter((match) => !match.confirmed).length;
+  const pending = store.matches.filter((match) => !match.confirmed && !match.deniedAt).length;
   const matches = store.matches
     .filter((match) => match.confirmed)
     .map((match) => ({
@@ -34,7 +34,7 @@ export default async function LadderPage({
           <h1 className="tavern-title text-3xl">Arena Leaderboard</h1>
           <p className="mt-2 max-w-2xl text-[var(--muted)]">
             Official WoW:Forever Arena Ranked Duels board. A fight counts when both players send it, or when
-            the Arena Master reports it.{" "}
+            the innkeeper or Arena Master confirms it.{" "}
             <Link href="/ladder/setup">How to send your duels</Link>.
           </p>
         </div>

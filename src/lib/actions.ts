@@ -7,6 +7,7 @@ import { isAdmin, loginAdmin, logoutAdmin } from "./admin";
 import { getSessionUser, hashUploadToken, hubNameList, loginUser, logoutUser, registerUser } from "./auth";
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
+import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { canonicalPlayerName } from "./player-name";
@@ -714,4 +715,39 @@ export async function adminLogin(formData: FormData) {
 
 export async function adminLogout() {
   await logoutAdmin();
+}
+
+export async function moderateLadderMatch(matchId: string, decision: "approved" | "denied") {
+  if (!(await isAdmin())) {
+    return { error: "Not allowed." };
+  }
+  let found = false;
+  await updateStore((data) => {
+    const match = data.matches.find((item) => item.matchId === matchId);
+    if (!match || match.confirmed) {
+      return;
+    }
+    found = true;
+    if (decision === "approved") {
+      const exportedAt = Math.floor(Date.now() / 1000);
+      if (!match.reports.some((report) => report.hub)) {
+        match.reports.push({ reporter: "Innkeeper", hub: true, exportedAt });
+      }
+      match.deniedAt = "";
+      match.confirmed = shouldConfirm(match.reports);
+      const previousPlayers = data.players;
+      data.players = recomputeLadder(data.matches);
+      applyPlayerIdentity(data.players, previousPlayers);
+      return;
+    }
+    match.deniedAt = new Date().toISOString();
+    match.confirmed = false;
+  });
+  if (!found) {
+    return { error: "That duel is not waiting on you." };
+  }
+  revalidatePath("/admin");
+  revalidatePath("/ladder");
+  revalidatePath("/");
+  return { ok: true as const };
 }

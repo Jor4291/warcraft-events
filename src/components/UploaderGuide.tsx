@@ -62,8 +62,8 @@ export function UploaderGuide({ signedIn }: { signedIn: boolean }) {
       <GuideStep n={6} title="Play, then reload">
         <p>
           Rated duels only leave the game after <code>/reload</code> or a logout. Keep the app open while you
-          play, then reload when you&apos;re done. A fight hits the board when both players send it, or when
-          the Arena Master reports it.
+          play, then reload when you&apos;re done. A fight hits the board when both players send it. A single
+          report waits for the innkeeper if the other player never sends it.
         </p>
       </GuideStep>
       <GuideStep n={7} title="Missing a fight?">

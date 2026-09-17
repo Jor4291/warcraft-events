@@ -125,6 +125,7 @@ export type LadderMatch = {
   loserDelta: number;
   expectedWinner: number;
   confirmed: boolean;
+  deniedAt: string;
   reports: MatchReport[];
 };
 

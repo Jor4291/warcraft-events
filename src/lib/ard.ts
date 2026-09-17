@@ -36,7 +36,7 @@ type IncomingPayload = {
   players?: IncomingPlayer[];
 };
 
-function asMatch(raw: IncomingMatch): Omit<LadderMatch, "confirmed" | "reports"> | null {
+function asMatch(raw: IncomingMatch): Omit<LadderMatch, "confirmed" | "reports" | "deniedAt"> | null {
   if (!raw.matchId || !raw.winner || !raw.loser) {
     return null;
   }
@@ -84,6 +84,7 @@ export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolea
           ...incoming,
           reports: [report],
           confirmed: shouldConfirm([report]),
+          deniedAt: "",
         };
         data.matches.push(next);
         inserted += 1;
@@ -96,10 +97,12 @@ export async function ingestArdu1(body: unknown, options?: { trustedHub?: boolea
       const already = existing.reports.some((item) => namesEqual(item.reporter, reporter));
       if (!already) {
         existing.reports.push(report);
+        existing.deniedAt = "";
       }
       existing.confirmed = shouldConfirm(existing.reports);
       if (existing.confirmed) {
         confirmed += 1;
+        existing.deniedAt = "";
       }
       if (!existing.winnerClass && incoming.winnerClass) {
         existing.winnerClass = incoming.winnerClass;

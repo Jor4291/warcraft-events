@@ -28,7 +28,7 @@ export default function UploadPage() {
       </p>
       <p className="mt-2 text-[var(--muted)]">
         This box is the backup. In game, type <code>/ard upload</code>, copy what it gives you, and paste it
-        here. A fight only hits the board when both players send it, or when the Arena Master reports it.
+        here. A fight hits the board when both players send it. A single report waits for the innkeeper.
       </p>
       <div className="mt-4 mb-6">
         <LadderSetupLinks />

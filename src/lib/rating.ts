@@ -85,12 +85,19 @@ export function applyPlayerIdentity(
   }
 }
 
+export function uniqueReporterCount(reports: { reporter: string }[]) {
+  return new Set(reports.map((report) => canonicalPlayerName(report.reporter) || report.reporter.toLowerCase())).size;
+}
+
 export function shouldConfirm(reports: { reporter: string; hub: boolean }[]) {
   if (reports.some((report) => report.hub)) {
     return true;
   }
-  const unique = new Set(reports.map((report) => canonicalPlayerName(report.reporter) || report.reporter.toLowerCase()));
-  return unique.size >= 2;
+  return uniqueReporterCount(reports) >= 2;
+}
+
+export function awaitingInnkeeper(match: Pick<LadderMatch, "confirmed" | "deniedAt" | "reports">) {
+  return !match.confirmed && !match.deniedAt && uniqueReporterCount(match.reports) < 2 && !match.reports.some((report) => report.hub);
 }
 
 function mergeReports(into: { reporter: string; hub: boolean; exportedAt: number }[], extra: { reporter: string; hub: boolean; exportedAt: number }[]) {
@@ -114,19 +121,24 @@ export function mergeLadderMatches(matches: LadderMatch[]): LadderMatch[] {
       reporter: characterName(report.reporter) || report.reporter,
     }));
     const existing = byId.get(matchId);
+    const deniedAt = existing?.deniedAt || match.deniedAt || "";
     if (!existing) {
+      const reportsReady = reports;
+      const confirmed = shouldConfirm(reportsReady);
       byId.set(matchId, {
         ...match,
         matchId,
         winner,
         loser,
-        reports,
-        confirmed: shouldConfirm(reports),
+        reports: reportsReady,
+        confirmed,
+        deniedAt: confirmed ? "" : deniedAt,
       });
       continue;
     }
     mergeReports(existing.reports, reports);
     existing.confirmed = shouldConfirm(existing.reports);
+    existing.deniedAt = existing.confirmed ? "" : existing.deniedAt || deniedAt;
     if (!existing.winnerClass && match.winnerClass) existing.winnerClass = match.winnerClass;
     if (!existing.loserClass && match.loserClass) existing.loserClass = match.loserClass;
     if (!existing.winnerSpec && match.winnerSpec) existing.winnerSpec = match.winnerSpec;
