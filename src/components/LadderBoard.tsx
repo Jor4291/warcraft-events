@@ -27,18 +27,23 @@ export function LadderBoard({
   matches,
   storedMatches,
   pending,
+  initialPlayer = "",
 }: {
   players: LadderPlayer[];
   matches: BoardMatch[];
   storedMatches: number;
   pending: number;
+  initialPlayer?: string;
 }) {
   const [tab, setTab] = useState<Tab>("board");
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [groupBy, setGroupBy] = useState<GroupBy>("overall");
   const [sort, setSort] = useState<SortKey>("rating");
-  const [selectedName, setSelectedName] = useState("");
+  const [selectedName, setSelectedName] = useState(() => {
+    const match = players.find((player) => namesEqual(player.name, initialPlayer));
+    return match?.name || "";
+  });
   const [expandedMatch, setExpandedMatch] = useState("");
 
   const classChips = useMemo(() => {

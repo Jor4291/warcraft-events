@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
 import { getSessionUser } from "@/lib/auth";
 import { emptyInbox, playerInbox } from "@/lib/notices";
+import { namesEqual } from "@/lib/player-name";
 import { getStore } from "@/lib/store";
 import "./globals.css";
 
@@ -28,15 +29,19 @@ export const metadata: Metadata = {
     "Public Warcraft events calendar, tournament brackets, and the WoW:Forever Arena Ranked Duels ladder.",
 };
 
-async function loadInbox(userId: string) {
+async function loadNav(userId: string, displayName: string) {
   const store = await getStore();
   const record = store.users.find((item) => item.id === userId);
-  return record ? playerInbox(record, store.events) : emptyInbox();
+  const player = store.players.find((item) => namesEqual(item.name, displayName));
+  return {
+    inbox: record ? playerInbox(record, store.events) : emptyInbox(),
+    rating: player ? { name: player.name, points: Math.round(player.points) } : null,
+  };
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getSessionUser();
-  const inbox = user ? await loadInbox(user.id) : emptyInbox();
+  const nav = user ? await loadNav(user.id, user.displayName) : { inbox: emptyInbox(), rating: null };
 
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} h-full`}>
@@ -49,7 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               <span className="tavern-title block text-2xl">WarcraftEvents</span>
             </Link>
-            <SiteNav user={user} inbox={inbox} />
+            <SiteNav user={user} inbox={nav.inbox} rating={nav.rating} />
           </div>
         </header>
         <div className="tavern-main flex-1">{children}</div>

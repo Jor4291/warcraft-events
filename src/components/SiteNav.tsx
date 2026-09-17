@@ -1,23 +1,116 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { NoticeBell } from "@/components/NoticeBell";
+import { AccountMenu } from "@/components/AccountMenu";
+import { ADDON_CURSEFORGE_URL } from "@/lib/downloads";
 import type { PlayerInbox } from "@/lib/notices";
 import type { PublicUser } from "@/lib/types";
 
-export function SiteNav({ user, inbox }: { user: PublicUser | null; inbox: PlayerInbox }) {
+type MenuId = "events" | "arena" | "account";
+
+export function SiteNav({
+  user,
+  inbox,
+  rating,
+}: {
+  user: PublicUser | null;
+  inbox: PlayerInbox;
+  rating: { name: string; points: number } | null;
+}) {
+  const [open, setOpen] = useState<MenuId | null>(null);
+  const root = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    function onPointer(event: MouseEvent) {
+      if (root.current && !root.current.contains(event.target as Node)) {
+        setOpen(null);
+      }
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(null);
+      }
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function toggle(id: MenuId) {
+    setOpen((current) => (current === id ? null : id));
+  }
+
   return (
-    <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[var(--muted)]">
-      <details className="nav-menu">
-        <summary className="nav-menu-button">Events &amp; Tools</summary>
-        <div className="nav-menu-panel">
-          <Link href="/events/submit">Book Event</Link>
-          <Link href="/events">Calendar</Link>
-          <Link href="/bracket">Bracket</Link>
-        </div>
-      </details>
-      <Link href="/ladder">Arena Leaderboard</Link>
-      <Link href="/ladder/setup">How to send duels</Link>
-      {user ? <NoticeBell inbox={inbox} /> : null}
-      {user ? <Link href="/account">{user.displayName}</Link> : <Link href="/account/login">Sign in</Link>}
+    <nav ref={root} className="site-nav text-sm text-[var(--muted)]">
+      <div className="nav-menu">
+        <button
+          type="button"
+          className="nav-menu-button"
+          aria-expanded={open === "events"}
+          onClick={() => toggle("events")}
+        >
+          Events &amp; Tools
+        </button>
+        {open === "events" ? (
+          <div className="nav-menu-panel">
+            <Link href="/events" onClick={() => setOpen(null)}>
+              Calendar
+            </Link>
+            <Link href="/events/submit" onClick={() => setOpen(null)}>
+              Book Event
+            </Link>
+            <Link href="/bracket" onClick={() => setOpen(null)}>
+              Hang a bracket
+            </Link>
+          </div>
+        ) : null}
+      </div>
+      <div className="nav-menu">
+        <button
+          type="button"
+          className="nav-menu-button"
+          aria-expanded={open === "arena"}
+          onClick={() => toggle("arena")}
+        >
+          Arena Ranked Duels
+        </button>
+        {open === "arena" ? (
+          <div className="nav-menu-panel">
+            <Link href="/ladder" onClick={() => setOpen(null)}>
+              Leaderboard
+            </Link>
+            {rating ? (
+              <Link href={`/ladder?player=${encodeURIComponent(rating.name)}`} onClick={() => setOpen(null)}>
+                Your rating · {rating.points}
+              </Link>
+            ) : null}
+            <Link href="/ladder/setup" onClick={() => setOpen(null)}>
+              How to send duels
+            </Link>
+            <Link href="/ladder/upload" onClick={() => setOpen(null)}>
+              Paste a duel log
+            </Link>
+            <a href={ADDON_CURSEFORGE_URL} target="_blank" rel="noreferrer">
+              Get the addon
+            </a>
+          </div>
+        ) : null}
+      </div>
+      <AccountMenu
+        user={user}
+        inbox={inbox}
+        rating={rating}
+        open={open === "account"}
+        onToggle={() => toggle("account")}
+        onNavigate={() => setOpen(null)}
+      />
     </nav>
   );
 }

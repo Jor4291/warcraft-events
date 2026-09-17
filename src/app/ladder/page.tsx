@@ -6,7 +6,12 @@ import { getStore } from "@/lib/store";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Arena Leaderboard" };
 
-export default async function LadderPage() {
+export default async function LadderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ player?: string }>;
+}) {
+  const { player = "" } = await searchParams;
   const store = await getStore();
   const pending = store.matches.filter((match) => !match.confirmed).length;
   const matches = store.matches
@@ -50,6 +55,7 @@ export default async function LadderPage() {
         matches={matches}
         storedMatches={store.matches.length}
         pending={pending}
+        initialPlayer={player}
       />
     </main>
   );
