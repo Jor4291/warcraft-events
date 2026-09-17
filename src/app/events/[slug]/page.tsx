@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { BracketBoard } from "@/components/BracketBoard";
 import { EventManage } from "@/components/EventManage";
+import { PlayerSignupStatus } from "@/components/PlayerSignupStatus";
 import { SignupPanel } from "@/components/SignupPanel";
 import { getSessionUser } from "@/lib/auth";
 import { canManageEvent, isEventOwner } from "@/lib/event-access";
+import { signupForUser, waitlistPlace } from "@/lib/notices";
 import { confirmedSignups, eventIsFull, signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
@@ -31,6 +33,7 @@ export default async function EventPage({
   const roster = confirmedSignups(event);
   const showRoster = event.rosterPublic || canEdit;
   const spots = signupSpotsLabel(event);
+  const mySignup = user ? signupForUser(event, user.id) : undefined;
 
   return (
     <main className="mx-auto w-full max-w-[100rem] space-y-8 px-4 py-12 md:px-8">
@@ -51,7 +54,11 @@ export default async function EventPage({
         <p className="tavern-frame p-4 text-[var(--muted)]">This event was cancelled by the host.</p>
       ) : null}
 
-      {event.status === "published" && !event.cancelledAt ? (
+      {event.status === "published" && !event.cancelledAt && mySignup ? (
+        <PlayerSignupStatus slug={event.slug} signup={mySignup} waitlistPlace={waitlistPlace(event, mySignup.id)} />
+      ) : null}
+
+      {event.status === "published" && !event.cancelledAt && !mySignup ? (
         <SignupPanel
           slug={event.slug}
           signupMode={event.signupMode}

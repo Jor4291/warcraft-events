@@ -91,6 +91,8 @@ export async function registerUser(email: string, password: string, displayName:
         passwordSalt: salt,
         uploadTokenHash: "",
         isHub: false,
+        notifications: [],
+        seenSoonIds: [],
         createdAt: new Date().toISOString(),
       });
     });

@@ -8,6 +8,7 @@ import { getSessionUser, hashUploadToken, hubNameList, loginUser, logoutUser, re
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
 import { canManageEvent, isEventOwner } from "./event-access";
+import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { EventRecord, SignupMode } from "./types";
@@ -40,6 +41,7 @@ function signupModeOf(value: FormDataEntryValue | null): SignupMode {
 }
 
 function revalidateEvent(event: EventRecord) {
+  revalidatePath("/", "layout");
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/account");
@@ -79,12 +81,14 @@ function checkboxOn(formData: FormData, name: string) {
 
 function promoteNextWaitlisted(event: EventRecord) {
   if (eventIsFull(event)) {
-    return;
+    return undefined;
   }
   const next = event.signups.find((signup) => signup.waitlisted);
-  if (next) {
-    next.waitlisted = false;
+  if (!next) {
+    return undefined;
   }
+  next.waitlisted = false;
+  return next;
 }
 
 export async function registerAccount(formData: FormData) {
@@ -228,8 +232,17 @@ export async function cancelEvent(formData: FormData) {
   }
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
-    if (target) {
-      target.cancelledAt = new Date().toISOString();
+    if (!target) {
+      return;
+    }
+    target.cancelledAt = new Date().toISOString();
+    const notified = new Set<string>();
+    for (const signup of target.signups) {
+      if (!signup.userId || notified.has(signup.userId)) {
+        continue;
+      }
+      notified.add(signup.userId);
+      pushNotice(data.users, signup.userId, makeNotice("cancelled", target));
     }
   });
   revalidateEvent(found.event);
@@ -285,10 +298,15 @@ export async function rsvpEvent(formData: FormData) {
       waitlisted,
       checkedIn: false,
     });
+    if (user) {
+      pushNotice(data.users, user.id, makeNotice(waitlisted ? "waitlist" : "signup", target));
+    }
   });
   if (error) {
     return { error };
   }
+  revalidatePath("/", "layout");
+  revalidatePath("/account");
   revalidatePath(`/events/${slug}`);
   return { ok: true as const, waitlisted };
 }
@@ -308,11 +326,78 @@ export async function removeSignup(formData: FormData) {
     }
     const removed = target.signups.find((signup) => signup.id === signupId);
     target.signups = target.signups.filter((signup) => signup.id !== signupId);
+    if (removed?.userId) {
+      pushNotice(data.users, removed.userId, makeNotice("removed", target));
+    }
     if (removed && !removed.waitlisted) {
-      promoteNextWaitlisted(target);
+      const promoted = promoteNextWaitlisted(target);
+      if (promoted?.userId) {
+        pushNotice(data.users, promoted.userId, makeNotice("promoted", target));
+      }
     }
   });
+  revalidatePath("/", "layout");
+  revalidatePath("/account");
   revalidatePath(`/events/${slug}`);
+  return { ok: true as const };
+}
+
+export async function leaveEvent(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const signupId = String(formData.get("signupId") || "");
+  const user = await getSessionUser();
+  if (!user) {
+    return { error: "Sign in to leave this event." };
+  }
+  const store = await getStore();
+  const event = store.events.find((item) => item.slug === slug && item.kind === "calendar");
+  if (!event) {
+    return { error: "Event not found." };
+  }
+  const mine = event.signups.find((signup) => signup.id === signupId && signup.userId === user.id);
+  if (!mine) {
+    return { error: "You are not on this list." };
+  }
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    if (!target) {
+      return;
+    }
+    const removed = target.signups.find((signup) => signup.id === signupId && signup.userId === user.id);
+    target.signups = target.signups.filter((signup) => signup.id !== signupId);
+    if (removed && !removed.waitlisted) {
+      const promoted = promoteNextWaitlisted(target);
+      if (promoted?.userId) {
+        pushNotice(data.users, promoted.userId, makeNotice("promoted", target));
+      }
+    }
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/account");
+  revalidatePath(`/events/${slug}`);
+  return { ok: true as const };
+}
+
+export async function markNoticesRead() {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: true as const };
+  }
+  const now = new Date().toISOString();
+  await updateStore((data) => {
+    const target = data.users.find((item) => item.id === user.id);
+    if (!target) {
+      return;
+    }
+    for (const notice of target.notifications) {
+      if (!notice.readAt) {
+        notice.readAt = now;
+      }
+    }
+    const soonIds = soonNightIds(nightsForUser(user.id, data.events));
+    target.seenSoonIds = [...new Set([...target.seenSoonIds, ...soonIds])];
+  });
+  revalidatePath("/", "layout");
   return { ok: true as const };
 }
 
@@ -340,10 +425,15 @@ export async function promoteWaitlist(formData: FormData) {
       return;
     }
     signup.waitlisted = false;
+    if (signup.userId) {
+      pushNotice(data.users, signup.userId, makeNotice("promoted", target));
+    }
   });
   if (error) {
     return { error };
   }
+  revalidatePath("/", "layout");
+  revalidatePath("/account");
   revalidatePath(`/events/${slug}`);
   return { ok: true as const };
 }

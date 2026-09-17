@@ -4,8 +4,9 @@ import { emptyStore, withPlaceholderEvents } from "./seed";
 import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
-import type { EventRecord, StoreData, UserRecord } from "./types";
+import type { EventRecord, PlayerNotice, StoreData, UserRecord } from "./types";
 import { normalizeCoHosts, normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";
+import { normalizeNotice, normalizeSeenSoonIds } from "./notices";
 
 const storePath = path.join(process.cwd(), "data", "store.json");
 
@@ -41,6 +42,8 @@ function normalizeUser(user: UserRecord): UserRecord {
     ...user,
     uploadTokenHash: user.uploadTokenHash ?? "",
     isHub: Boolean(user.isHub),
+    notifications: (user.notifications ?? []).map(normalizeNotice).filter((notice): notice is PlayerNotice => Boolean(notice)),
+    seenSoonIds: normalizeSeenSoonIds(user.seenSoonIds),
   };
 }
 

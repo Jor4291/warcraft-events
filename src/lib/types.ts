@@ -71,6 +71,18 @@ export type EventRecord = {
   createdAt: string;
 };
 
+export type PlayerNoticeKind = "signup" | "waitlist" | "promoted" | "cancelled" | "removed" | "starts_soon";
+
+export type PlayerNotice = {
+  id: string;
+  kind: PlayerNoticeKind;
+  eventId: string;
+  eventSlug: string;
+  eventTitle: string;
+  createdAt: string;
+  readAt: string;
+};
+
 export type UserRecord = {
   id: string;
   email: string;
@@ -79,6 +91,8 @@ export type UserRecord = {
   passwordSalt: string;
   uploadTokenHash: string;
   isHub: boolean;
+  notifications: PlayerNotice[];
+  seenSoonIds: string[];
   createdAt: string;
 };
 

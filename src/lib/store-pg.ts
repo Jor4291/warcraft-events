@@ -39,6 +39,14 @@ async function ensureSchema() {
         )
       `);
       await create(sql`
+        ALTER TABLE users
+          ADD COLUMN IF NOT EXISTS notices jsonb NOT NULL DEFAULT '[]'::jsonb
+      `);
+      await create(sql`
+        ALTER TABLE users
+          ADD COLUMN IF NOT EXISTS seen_soon_ids jsonb NOT NULL DEFAULT '[]'::jsonb
+      `);
+      await create(sql`
         CREATE TABLE IF NOT EXISTS events (
           id text PRIMARY KEY,
           slug text NOT NULL UNIQUE,
@@ -68,6 +76,21 @@ async function ensureSchema() {
   await schemaPromise;
 }
 
+function jsonArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function asUser(row: Record<string, unknown>): UserRecord {
   return {
     id: String(row.id),
@@ -77,6 +100,8 @@ function asUser(row: Record<string, unknown>): UserRecord {
     passwordSalt: String(row.password_salt),
     uploadTokenHash: String(row.upload_token_hash || ""),
     isHub: Boolean(row.is_hub),
+    notifications: jsonArray(row.notices) as UserRecord["notifications"],
+    seenSoonIds: jsonArray(row.seen_soon_ids).map((id) => String(id)),
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -85,7 +110,7 @@ export async function readPostgres(): Promise<StoreData> {
   await ensureSchema();
   const sql = getSql();
   const [users, events, matches, players] = await Promise.all([
-    sql`SELECT id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, created_at FROM users ORDER BY created_at DESC`,
+    sql`SELECT id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, created_at FROM users ORDER BY created_at DESC`,
     sql`SELECT data FROM events`,
     sql`SELECT data FROM matches ORDER BY timestamp ASC`,
     sql`SELECT data FROM players ORDER BY points DESC`,
@@ -120,14 +145,18 @@ function deleteMissing(sql: ReturnType<typeof getSql>, table: "users" | "events"
   return sql`DELETE FROM players WHERE NOT (name = ANY(${ids}))`;
 }
 
+function jsonText(value: unknown) {
+  return JSON.stringify(value ?? []);
+}
+
 export async function writePostgres(data: StoreData) {
   await ensureSchema();
   const sql = getSql();
   const queries = [
     ...data.users.map(
       (user) =>
-        sql`INSERT INTO users (id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, created_at)
-            VALUES (${user.id}, ${user.email}, ${user.displayName}, ${user.passwordHash}, ${user.passwordSalt}, ${user.uploadTokenHash}, ${user.isHub}, ${user.createdAt})
+        sql`INSERT INTO users (id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, created_at)
+            VALUES (${user.id}, ${user.email}, ${user.displayName}, ${user.passwordHash}, ${user.passwordSalt}, ${user.uploadTokenHash}, ${user.isHub}, CAST(${jsonText(user.notifications)} AS jsonb), CAST(${jsonText(user.seenSoonIds)} AS jsonb), ${user.createdAt})
             ON CONFLICT (id) DO UPDATE SET
               email = EXCLUDED.email,
               display_name = EXCLUDED.display_name,
@@ -135,6 +164,8 @@ export async function writePostgres(data: StoreData) {
               password_salt = EXCLUDED.password_salt,
               upload_token_hash = EXCLUDED.upload_token_hash,
               is_hub = EXCLUDED.is_hub,
+              notices = EXCLUDED.notices,
+              seen_soon_ids = EXCLUDED.seen_soon_ids,
               created_at = EXCLUDED.created_at`,
     ),
     ...data.events.map(
