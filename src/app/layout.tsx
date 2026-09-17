@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s · WarcraftEvents",
   },
   description:
-    "Public Warcraft events calendar, tournament brackets, and the WoW:Forever Arena Ranked Duels ladder.",
+    "Public Warcraft events calendar, tavern corkboard, tournament brackets, and the WoW:Forever Arena Ranked Duels ladder.",
 };
 
 async function loadNav(userId: string, displayName: string) {
@@ -61,6 +61,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <div className="tavern-main flex-1">{children}</div>
         <footer className="tavern-footer px-6 py-6 text-center text-sm text-[var(--muted)]">
           WarcraftEvents.com · a notice board for Azeroth and WoW:Forever
+          <span className="mx-2">·</span>
+          <Link href="/board">Forums</Link>
           <span className="mx-2">·</span>
           <Link href="/admin">Innkeeper</Link>
           <span className="mx-2">·</span>

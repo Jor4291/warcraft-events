@@ -10,9 +10,10 @@ import { ingestArdu1 } from "./ard";
 import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
+import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
-import type { EventRecord, SignupMode } from "./types";
+import type { EventRecord, ForumThread, SignupMode } from "./types";
 import {
   collectSignupAnswers,
   confirmedSignups,
@@ -28,6 +29,40 @@ function slugify(title: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
   return `${base || "event"}-${randomBytes(3).toString("hex")}`;
+}
+
+function makeTopic(input: {
+  title: string;
+  body: string;
+  authorId: string;
+  authorName: string;
+  forumId: string;
+  eventSlug?: string;
+}): ForumThread {
+  const now = new Date().toISOString();
+  return {
+    id: randomBytes(6).toString("hex"),
+    slug: slugify(input.title).replace(/^event-/, "thread-"),
+    forumId: isForumId(input.forumId) ? input.forumId : "general",
+    eventSlug: input.eventSlug || "",
+    title: clipForumTitle(input.title),
+    authorId: input.authorId,
+    authorName: input.authorName,
+    createdAt: now,
+    updatedAt: now,
+    lockedAt: "",
+    hiddenAt: "",
+    posts: [
+      {
+        id: randomBytes(6).toString("hex"),
+        authorId: input.authorId,
+        authorName: input.authorName,
+        body: clipForumBody(input.body),
+        createdAt: now,
+        hiddenAt: "",
+      },
+    ],
+  };
 }
 
 function parseTeams(teamsText: string) {
@@ -74,6 +109,20 @@ async function findOwned(slug: string, editKey: string) {
     return { error: "Only the host can change co-hosts." as const };
   }
   return found;
+}
+
+function revalidateBoard(slug?: string, forumId?: string, eventSlug?: string) {
+  revalidatePath("/board");
+  if (forumId) {
+    revalidatePath(forumPath(forumId));
+  }
+  if (slug) {
+    revalidatePath(topicPath(slug));
+    revalidatePath(`/board/${slug}`);
+  }
+  if (eventSlug) {
+    revalidatePath(`/events/${eventSlug}`);
+  }
 }
 
 function checkboxOn(formData: FormData, name: string) {
@@ -151,6 +200,15 @@ export async function submitEvent(formData: FormData) {
   const inviteCode = randomBytes(4).toString("hex").toUpperCase();
   const slug = slugify(title);
   const mode = signupModeOf(formData.get("signupMode"));
+  const description = String(formData.get("description") || "").trim();
+  const topic = makeTopic({
+    title,
+    body: eventDiscussionBody(title, description),
+    authorId: user.id,
+    authorName: user.displayName,
+    forumId: "events",
+    eventSlug: slug,
+  });
   await updateStore((data) => {
     data.events.unshift({
       id,
@@ -162,7 +220,7 @@ export async function submitEvent(formData: FormData) {
       endsAt: String(formData.get("endsAt") || ""),
       region: String(formData.get("region") || "").trim(),
       location: String(formData.get("location") || "").trim(),
-      description: String(formData.get("description") || "").trim(),
+      description,
       contact: String(formData.get("contact") || user.displayName).trim(),
       status: "published",
       kind: "calendar",
@@ -180,12 +238,15 @@ export async function submitEvent(formData: FormData) {
       whiteboard: "",
       teams: [],
       rounds: [],
+      threadSlug: topic.slug,
       createdAt: new Date().toISOString(),
     });
+    data.threads.unshift(topic);
   });
   revalidatePath("/events");
   revalidatePath("/");
   revalidatePath("/account");
+  revalidateBoard(topic.slug, topic.forumId, slug);
   return { slug, editKey, inviteCode, signupMode: mode };
 }
 
@@ -553,6 +614,15 @@ export async function duplicateEvent(formData: FormData) {
   const nextEditKey = randomBytes(8).toString("hex");
   const inviteCode = randomBytes(4).toString("hex").toUpperCase();
   const nextSlug = slugify(`${source.title} copy`);
+  const userName = user?.displayName || source.contact || "Host";
+  const topic = makeTopic({
+    title: `${source.title} (copy)`,
+    body: eventDiscussionBody(`${source.title} (copy)`, source.description),
+    authorId: user?.id || source.ownerId,
+    authorName: userName,
+    forumId: "events",
+    eventSlug: nextSlug,
+  });
   await updateStore((data) => {
     data.events.unshift({
       id,
@@ -582,13 +652,16 @@ export async function duplicateEvent(formData: FormData) {
       whiteboard: "",
       teams: [],
       rounds: [],
+      threadSlug: topic.slug,
       createdAt: new Date().toISOString(),
     });
+    data.threads.unshift(topic);
   });
   revalidatePath("/events");
   revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/events/${nextSlug}`);
+  revalidateBoard(topic.slug, topic.forumId, nextSlug);
   return { slug: nextSlug, editKey: nextEditKey, inviteCode };
 }
 
@@ -631,6 +704,7 @@ export async function createStandaloneBracket(formData: FormData) {
       whiteboard: "",
       teams,
       rounds: buildSingleElim(teams),
+      threadSlug: "",
       createdAt: new Date().toISOString(),
     });
   });
@@ -744,4 +818,159 @@ export async function moderateLadderMatch(matchId: string, decision: "approved" 
   revalidatePath("/admin");
   revalidatePath("/ladder");
   revalidatePath("/");
+}
+
+export async function createForumThread(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) {
+    return { error: "Sign in to start a topic." };
+  }
+  const title = clipForumTitle(String(formData.get("title") || ""));
+  const body = clipForumBody(String(formData.get("body") || ""));
+  const forumId = String(formData.get("forumId") || "general");
+  if (!title) {
+    return { error: "Give the topic a title." };
+  }
+  if (!body) {
+    return { error: "Write a first post." };
+  }
+  if (title.length > FORUM_TITLE_MAX || body.length > FORUM_BODY_MAX) {
+    return { error: "That post is too long." };
+  }
+  const topic = makeTopic({
+    title,
+    body,
+    authorId: user.id,
+    authorName: user.displayName,
+    forumId,
+  });
+  await updateStore((data) => {
+    data.threads.unshift(topic);
+  });
+  revalidateBoard(topic.slug, topic.forumId);
+  redirect(topicPath(topic.slug));
+}
+
+export async function replyToForumThread(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) {
+    return { error: "Sign in to reply." };
+  }
+  const slug = String(formData.get("slug") || "");
+  const body = clipForumBody(String(formData.get("body") || ""));
+  if (!slug) {
+    return { error: "Thread not found." };
+  }
+  if (!body) {
+    return { error: "Write a reply." };
+  }
+  const store = await getStore();
+  const thread = store.threads.find((item) => item.slug === slug);
+  if (!thread || thread.hiddenAt) {
+    return { error: "Topic not found." };
+  }
+  if (thread.lockedAt) {
+    return { error: "This topic is locked." };
+  }
+  const now = new Date().toISOString();
+  await updateStore((data) => {
+    const target = data.threads.find((item) => item.slug === slug);
+    if (!target || target.lockedAt || target.hiddenAt) {
+      return;
+    }
+    target.posts.push({
+      id: randomBytes(6).toString("hex"),
+      authorId: user.id,
+      authorName: user.displayName,
+      body,
+      createdAt: now,
+      hiddenAt: "",
+    });
+    target.updatedAt = now;
+  });
+  revalidateBoard(slug, thread.forumId, thread.eventSlug);
+  redirect(topicPath(slug));
+}
+
+export async function moderateForumThread(slug: string, decision: "locked" | "unlocked" | "hidden" | "shown") {
+  if (!(await isAdmin())) {
+    return;
+  }
+  let forumId = "";
+  let eventSlug = "";
+  await updateStore((data) => {
+    const thread = data.threads.find((item) => item.slug === slug);
+    if (!thread) {
+      return;
+    }
+    forumId = thread.forumId;
+    eventSlug = thread.eventSlug;
+    const now = new Date().toISOString();
+    if (decision === "locked") {
+      thread.lockedAt = now;
+    }
+    if (decision === "unlocked") {
+      thread.lockedAt = "";
+    }
+    if (decision === "hidden") {
+      thread.hiddenAt = now;
+    }
+    if (decision === "shown") {
+      thread.hiddenAt = "";
+    }
+  });
+  revalidateBoard(slug, forumId, eventSlug);
+}
+
+export async function moderateForumPost(slug: string, postId: string, decision: "hidden" | "shown") {
+  if (!(await isAdmin())) {
+    return;
+  }
+  let forumId = "";
+  let eventSlug = "";
+  await updateStore((data) => {
+    const thread = data.threads.find((item) => item.slug === slug);
+    const post = thread?.posts.find((item) => item.id === postId);
+    if (!thread || !post) {
+      return;
+    }
+    forumId = thread.forumId;
+    eventSlug = thread.eventSlug;
+    post.hiddenAt = decision === "hidden" ? new Date().toISOString() : "";
+  });
+  revalidateBoard(slug, forumId, eventSlug);
+}
+
+export async function openEventDiscussion(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) {
+    return { error: "Sign in to start a discussion." };
+  }
+  const slug = String(formData.get("slug") || "");
+  const store = await getStore();
+  const event = store.events.find((item) => item.slug === slug && item.kind === "calendar");
+  if (!event || event.status !== "published") {
+    return { error: "Event not found." };
+  }
+  const existing = store.threads.find((item) => item.slug === event.threadSlug || item.eventSlug === event.slug);
+  if (existing && !existing.hiddenAt) {
+    redirect(topicPath(existing.slug));
+  }
+  const topic = makeTopic({
+    title: event.title,
+    body: eventDiscussionBody(event.title, event.description),
+    authorId: user.id,
+    authorName: user.displayName,
+    forumId: "events",
+    eventSlug: event.slug,
+  });
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    if (target) {
+      target.threadSlug = topic.slug;
+    }
+    data.threads.unshift(topic);
+  });
+  revalidateBoard(topic.slug, topic.forumId, event.slug);
+  redirect(topicPath(topic.slug));
 }

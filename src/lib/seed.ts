@@ -11,7 +11,7 @@ function daysFromNow(days: number, hour = 18) {
 function event(
   partial: Omit<
     EventRecord,
-    "createdAt" | "status" | "rounds" | "kind" | "ownerId" | "signupMode" | "inviteCode" | "signups" | "cancelledAt" | "signupFields" | "signupCap" | "waitlistEnabled" | "rosterPublic" | "coHosts"
+    "createdAt" | "status" | "rounds" | "kind" | "ownerId" | "signupMode" | "inviteCode" | "signups" | "cancelledAt" | "signupFields" | "signupCap" | "waitlistEnabled" | "rosterPublic" | "coHosts" | "threadSlug"
   > & {
     status?: EventRecord["status"];
     kind?: EventRecord["kind"];
@@ -41,6 +41,7 @@ function event(
     signups: partial.signups ?? [],
     cancelledAt: "",
     rounds: buildSingleElim(partial.teams),
+    threadSlug: "",
     createdAt: new Date().toISOString(),
   };
 }
@@ -190,6 +191,7 @@ export const emptyStore = (): StoreData => ({
   matches: [],
   players: [],
   users: [],
+  threads: [],
 });
 
 export function uniqueEvents(events: EventRecord[]): EventRecord[] {

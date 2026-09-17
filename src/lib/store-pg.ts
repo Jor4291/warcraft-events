@@ -1,6 +1,6 @@
 import { emptyStore } from "./seed";
 import { getSql } from "./db";
-import type { EventRecord, LadderMatch, LadderPlayer, StoreData, UserRecord } from "./types";
+import type { EventRecord, ForumThread, LadderMatch, LadderPlayer, StoreData, UserRecord } from "./types";
 
 let schemaPromise: Promise<void> | null = null;
 
@@ -68,6 +68,14 @@ async function ensureSchema() {
           data jsonb NOT NULL
         )
       `);
+      await create(sql`
+        CREATE TABLE IF NOT EXISTS forum_threads (
+          id text PRIMARY KEY,
+          slug text NOT NULL UNIQUE,
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          data jsonb NOT NULL
+        )
+      `);
     })().catch((error) => {
       schemaPromise = null;
       throw error;
@@ -109,11 +117,12 @@ function asUser(row: Record<string, unknown>): UserRecord {
 export async function readPostgres(): Promise<StoreData> {
   await ensureSchema();
   const sql = getSql();
-  const [users, events, matches, players] = await Promise.all([
+  const [users, events, matches, players, threads] = await Promise.all([
     sql`SELECT id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, created_at FROM users ORDER BY created_at DESC`,
     sql`SELECT data FROM events`,
     sql`SELECT data FROM matches ORDER BY timestamp ASC`,
     sql`SELECT data FROM players ORDER BY points DESC`,
+    sql`SELECT data FROM forum_threads ORDER BY updated_at DESC`,
   ]);
 
   const data: StoreData = {
@@ -121,6 +130,7 @@ export async function readPostgres(): Promise<StoreData> {
     events: events.map((row) => row.data as EventRecord),
     matches: matches.map((row) => row.data as LadderMatch),
     players: players.map((row) => row.data as LadderPlayer),
+    threads: threads.map((row) => row.data as ForumThread),
   };
 
   if (data.users.length === 0 && data.events.length === 0 && data.matches.length === 0) {
@@ -132,16 +142,22 @@ export async function readPostgres(): Promise<StoreData> {
   return data;
 }
 
-function deleteMissing(sql: ReturnType<typeof getSql>, table: "users" | "events" | "matches" | "players", ids: string[]) {
+function deleteMissing(
+  sql: ReturnType<typeof getSql>,
+  table: "users" | "events" | "matches" | "players" | "forum_threads",
+  ids: string[],
+) {
   if (ids.length === 0) {
     if (table === "users") return sql`DELETE FROM users`;
     if (table === "events") return sql`DELETE FROM events`;
     if (table === "matches") return sql`DELETE FROM matches`;
+    if (table === "forum_threads") return sql`DELETE FROM forum_threads`;
     return sql`DELETE FROM players`;
   }
   if (table === "users") return sql`DELETE FROM users WHERE NOT (id = ANY(${ids}))`;
   if (table === "events") return sql`DELETE FROM events WHERE NOT (id = ANY(${ids}))`;
   if (table === "matches") return sql`DELETE FROM matches WHERE NOT (match_id = ANY(${ids}))`;
+  if (table === "forum_threads") return sql`DELETE FROM forum_threads WHERE NOT (id = ANY(${ids}))`;
   return sql`DELETE FROM players WHERE NOT (name = ANY(${ids}))`;
 }
 
@@ -183,10 +199,16 @@ export async function writePostgres(data: StoreData) {
         sql`INSERT INTO players (name, points, data) VALUES (${player.name}, ${player.points}, ${player})
             ON CONFLICT (name) DO UPDATE SET points = EXCLUDED.points, data = EXCLUDED.data`,
     ),
+    ...data.threads.map(
+      (thread) =>
+        sql`INSERT INTO forum_threads (id, slug, updated_at, data) VALUES (${thread.id}, ${thread.slug}, ${thread.updatedAt || thread.createdAt || new Date().toISOString()}, ${thread})
+            ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug, updated_at = EXCLUDED.updated_at, data = EXCLUDED.data`,
+    ),
     deleteMissing(sql, "users", data.users.map((user) => user.id)),
     deleteMissing(sql, "events", data.events.map((event) => event.id)),
     deleteMissing(sql, "matches", data.matches.map((match) => match.matchId)),
     deleteMissing(sql, "players", data.players.map((player) => player.name)),
+    deleteMissing(sql, "forum_threads", data.threads.map((thread) => thread.id)),
   ];
   await sql.transaction(queries);
 }

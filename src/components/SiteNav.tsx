@@ -60,6 +60,9 @@ export function SiteNav({
         </button>
         {open === "events" ? (
           <div className="nav-menu-panel">
+            <Link href="/board" onClick={() => setOpen(null)}>
+              Forums
+            </Link>
             <Link href="/events" onClick={() => setOpen(null)}>
               Calendar
             </Link>

@@ -3,11 +3,14 @@ import { BracketBoard } from "@/components/BracketBoard";
 import { EventManage } from "@/components/EventManage";
 import { PlayerSignupStatus } from "@/components/PlayerSignupStatus";
 import { SignupPanel } from "@/components/SignupPanel";
+import { StartDiscussionButton } from "@/components/StartDiscussionButton";
 import { getSessionUser } from "@/lib/auth";
 import { canManageEvent, isEventOwner } from "@/lib/event-access";
+import { replyCount, threadForEvent, topicPath } from "@/lib/forum";
 import { signupForUser, waitlistPlace } from "@/lib/notices";
 import { confirmedSignups, eventIsFull, signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
+import Link from "next/link";
 
 export default async function EventPage({
   params,
@@ -34,6 +37,8 @@ export default async function EventPage({
   const showRoster = event.rosterPublic || canEdit;
   const spots = signupSpotsLabel(event);
   const mySignup = user ? signupForUser(event, user.id) : undefined;
+  const discussion = threadForEvent(store.threads, event);
+  const discussionReplies = discussion ? replyCount(discussion) : 0;
 
   return (
     <main className="mx-auto w-full max-w-[100rem] space-y-8 px-4 py-12 md:px-8">
@@ -52,6 +57,28 @@ export default async function EventPage({
 
       {event.cancelledAt ? (
         <p className="tavern-frame p-4 text-[var(--muted)]">This event was cancelled by the host.</p>
+      ) : null}
+
+      {event.status === "published" ? (
+        <section className="tavern-frame p-5">
+          <h2 className="tavern-title text-xl">Discussion</h2>
+          {discussion && !discussion.hiddenAt ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              <Link href={topicPath(discussion.slug)}>Open the forum topic</Link>
+              {` · ${discussionReplies} ${discussionReplies === 1 ? "reply" : "replies"}`}
+            </p>
+          ) : user ? (
+            <div className="mt-3">
+              <p className="mb-3 text-sm text-[var(--muted)]">No topic yet. Hang one on the Events board.</p>
+              <StartDiscussionButton slug={event.slug} />
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              <Link href={`/account/login?next=${encodeURIComponent(`/events/${event.slug}`)}`}>Sign in</Link> to start a
+              discussion.
+            </p>
+          )}
+        </section>
       ) : null}
 
       {event.status === "published" && !event.cancelledAt && mySignup ? (

@@ -4,6 +4,7 @@ import { emptyStore, withPlaceholderEvents } from "./seed";
 import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
+import { normalizeForumThread } from "./forum";
 import type { EventRecord, PlayerNotice, StoreData, UserRecord } from "./types";
 import { normalizeCoHosts, normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";
 import { normalizeNotice, normalizeSeenSoonIds } from "./notices";
@@ -34,6 +35,7 @@ function normalizeEvent(event: EventRecord): EventRecord {
     teams: event.teams ?? [],
     rounds: event.rounds ?? [],
     whiteboard: event.whiteboard ?? "",
+    threadSlug: event.threadSlug ?? "",
   };
 }
 
@@ -54,6 +56,7 @@ function normalize(data: Partial<StoreData> | StoreData): StoreData {
       matches: data.matches ?? [],
       players: data.players ?? [],
       users: (data.users ?? []).map(normalizeUser),
+      threads: (data.threads ?? []).map(normalizeForumThread).filter((thread) => thread.id && thread.slug),
     }),
   );
 }

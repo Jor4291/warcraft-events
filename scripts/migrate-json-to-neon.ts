@@ -11,9 +11,10 @@ async function main() {
   const file = path.join(process.cwd(), "data", "store.json");
   const raw = await readFile(file, "utf8");
   const data = JSON.parse(raw) as StoreData;
+  data.threads = data.threads ?? [];
   await writePostgres(data);
   console.log(
-    `Migrated ${data.users.length} users, ${data.events.length} events, ${data.matches.length} matches, ${data.players.length} players.`,
+    `Migrated ${data.users.length} users, ${data.events.length} events, ${data.matches.length} matches, ${data.players.length} players, ${(data.threads ?? []).length} threads.`,
   );
 }
 

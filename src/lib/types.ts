@@ -68,6 +68,7 @@ export type EventRecord = {
   whiteboard: string;
   teams: string[];
   rounds: BracketRound[];
+  threadSlug: string;
   createdAt: string;
 };
 
@@ -142,9 +143,34 @@ export type LadderPlayer = {
   games: number;
 };
 
+export type ForumPost = {
+  id: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  hiddenAt: string;
+};
+
+export type ForumThread = {
+  id: string;
+  slug: string;
+  forumId: string;
+  eventSlug: string;
+  title: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+  lockedAt: string;
+  hiddenAt: string;
+  posts: ForumPost[];
+};
+
 export type StoreData = {
   events: EventRecord[];
   matches: LadderMatch[];
   players: LadderPlayer[];
   users: UserRecord[];
+  threads: ForumThread[];
 };
