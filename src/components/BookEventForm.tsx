@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { submitEvent } from "@/lib/actions";
+import { SignupFormBuilder } from "./SignupFormBuilder";
 
 export function BookEventForm() {
   const [result, setResult] = useState<{
@@ -74,6 +75,27 @@ export function BookEventForm() {
           </label>
         </div>
       </fieldset>
+      <label className="block text-sm">
+        Player cap
+        <input
+          name="signupCap"
+          type="number"
+          min={0}
+          max={1000}
+          placeholder="Leave blank for no cap"
+          className="tavern-input"
+        />
+        <span className="mt-1 block text-xs text-[var(--muted)]">
+          Optional. When the list is full, players see that sign-ups are filled.
+        </span>
+      </label>
+      <div>
+        <h2 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">Sign-up questions</h2>
+        <p className="mt-1 mb-3 text-sm text-[var(--muted)]">
+          Optional. Ask for class, realm, role, or anything else. You can change this later from the event page.
+        </p>
+        <SignupFormBuilder initialFields={[]} />
+      </div>
       {error ? <p className="text-red-300">{error}</p> : null}
       <button type="submit" className="tavern-btn">
         Book Event

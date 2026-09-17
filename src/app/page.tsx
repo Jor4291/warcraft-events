@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LadderPreview } from "@/components/LadderPreview";
+import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +65,7 @@ export default async function HomePage() {
                   </Link>
                   <p className="text-sm text-[var(--muted)]">
                     {event.game} · {formatWhen(event.startsAt)} · {event.region || "All regions"}
+                    {event.signupCap > 0 ? ` · ${signupSpotsLabel(event.signups.length, event.signupCap)}` : ""}
                   </p>
                 </li>
               ))}

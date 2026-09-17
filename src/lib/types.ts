@@ -14,11 +14,22 @@ export type BracketRound = {
   matches: BracketMatch[];
 };
 
+export type SignupFieldType = "short" | "long" | "choice";
+
+export type SignupField = {
+  id: string;
+  label: string;
+  type: SignupFieldType;
+  required: boolean;
+  options: string[];
+};
+
 export type EventSignup = {
   id: string;
   name: string;
   userId: string;
   createdAt: string;
+  answers: Record<string, string>;
 };
 
 export type EventRecord = {
@@ -38,6 +49,8 @@ export type EventRecord = {
   ownerId: string;
   signupMode: SignupMode;
   inviteCode: string;
+  signupCap: number;
+  signupFields: SignupField[];
   signups: EventSignup[];
   cancelledAt: string;
   editKey: string;

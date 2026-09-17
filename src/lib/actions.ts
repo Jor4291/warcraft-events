@@ -11,6 +11,7 @@ import { canManageEvent } from "./event-access";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { EventRecord, SignupMode } from "./types";
+import { collectSignupAnswers, eventIsFull, parseSignupCap, parseSignupFieldsJson } from "./signup-form";
 
 function slugify(title: string) {
   const base = title
@@ -132,6 +133,8 @@ export async function submitEvent(formData: FormData) {
       ownerId: user.id,
       signupMode: mode,
       inviteCode,
+      signupCap: parseSignupCap(formData.get("signupCap")),
+      signupFields: parseSignupFieldsJson(formData.get("signupFieldsJson")),
       signups: [],
       cancelledAt: "",
       editKey,
@@ -173,6 +176,8 @@ export async function updateEvent(formData: FormData) {
     target.description = String(formData.get("description") || "").trim();
     target.contact = String(formData.get("contact") || "").trim();
     target.signupMode = signupModeOf(formData.get("signupMode"));
+    target.signupCap = parseSignupCap(formData.get("signupCap"));
+    target.signupFields = parseSignupFieldsJson(formData.get("signupFieldsJson"));
   });
   revalidateEvent(found.event);
   return { ok: true as const };
@@ -214,12 +219,23 @@ export async function rsvpEvent(formData: FormData) {
   if (event.signupMode === "invite" && inviteCode !== event.inviteCode) {
     return { error: "That invite code does not match." };
   }
-  if (event.signups.some((signup) => signup.name.toLowerCase() === name.toLowerCase())) {
-    return { error: "That name is already on the list." };
+  const collected = collectSignupAnswers(event.signupFields, formData);
+  if (collected.error) {
+    return { error: collected.error };
   }
+  let error = "";
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
     if (!target) {
+      error = "Event not found.";
+      return;
+    }
+    if (eventIsFull(target)) {
+      error = "The event sign-ups are filled.";
+      return;
+    }
+    if (target.signups.some((signup) => signup.name.toLowerCase() === name.toLowerCase())) {
+      error = "That name is already on the list.";
       return;
     }
     target.signups.push({
@@ -227,8 +243,12 @@ export async function rsvpEvent(formData: FormData) {
       name,
       userId: user?.id || "",
       createdAt: new Date().toISOString(),
+      answers: collected.answers,
     });
   });
+  if (error) {
+    return { error };
+  }
   revalidatePath(`/events/${slug}`);
   return { ok: true as const };
 }
@@ -279,6 +299,8 @@ export async function createStandaloneBracket(formData: FormData) {
       ownerId: user?.id || "",
       signupMode: "open",
       inviteCode: "",
+      signupCap: 0,
+      signupFields: [],
       signups: [],
       cancelledAt: "",
       editKey,

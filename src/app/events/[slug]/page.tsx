@@ -4,6 +4,7 @@ import { EventManage } from "@/components/EventManage";
 import { SignupPanel } from "@/components/SignupPanel";
 import { getSessionUser } from "@/lib/auth";
 import { canManageEvent } from "@/lib/event-access";
+import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
 export default async function EventPage({
@@ -33,6 +34,7 @@ export default async function EventPage({
         <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">
           {event.cancelledAt ? "cancelled" : event.status} · {event.game} · {event.region || "All regions"} ·{" "}
           {event.signupMode === "invite" ? "Invite only" : "Open sign-up"}
+          {event.signupCap > 0 ? ` · ${signupSpotsLabel(event.signups.length, event.signupCap)}` : ""}
         </p>
         <h1 className="tavern-title mt-2 text-4xl">{event.title}</h1>
         <p className="mt-3 max-w-3xl text-[var(--muted)]">{event.description}</p>
@@ -46,12 +48,19 @@ export default async function EventPage({
       ) : null}
 
       {event.status === "published" && !event.cancelledAt ? (
-        <SignupPanel slug={event.slug} signupMode={event.signupMode} defaultName={user?.displayName || ""} />
+        <SignupPanel
+          slug={event.slug}
+          signupMode={event.signupMode}
+          defaultName={user?.displayName || ""}
+          fields={event.signupFields}
+          signupCap={event.signupCap}
+          signupCount={event.signups.length}
+        />
       ) : null}
 
       {event.signups.length > 0 ? (
         <section className="tavern-frame p-5">
-          <h2 className="tavern-title text-xl">On the list ({event.signups.length})</h2>
+          <h2 className="tavern-title text-xl">On the list ({signupSpotsLabel(event.signups.length, event.signupCap)})</h2>
           <ul className="mt-3 columns-1 gap-8 sm:columns-2">
             {event.signups.map((signup) => (
               <li key={signup.id} className="mb-1 text-sm">

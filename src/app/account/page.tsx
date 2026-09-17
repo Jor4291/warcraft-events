@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { UploaderTokenPanel } from "@/components/UploaderTokenPanel";
 import { logoutAccount } from "@/lib/actions";
 import { getSessionUser } from "@/lib/auth";
+import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
 export const metadata = { title: "Account" };
@@ -51,6 +52,7 @@ export default async function AccountPage() {
                 <p className="text-sm text-[var(--muted)]">
                   {event.kind === "bracket" ? "Standalone bracket" : event.cancelledAt ? "Cancelled event" : "Calendar event"}
                   {event.kind === "calendar" && event.signupMode === "invite" ? ` · code ${event.inviteCode}` : ""}
+                  {event.kind === "calendar" ? ` · ${signupSpotsLabel(event.signups.length, event.signupCap)}` : ""}
                 </p>
               </li>
             ))}

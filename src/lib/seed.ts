@@ -9,12 +9,17 @@ function daysFromNow(days: number, hour = 18) {
 }
 
 function event(
-  partial: Omit<EventRecord, "createdAt" | "status" | "rounds" | "kind" | "ownerId" | "signupMode" | "inviteCode" | "signups" | "cancelledAt"> & {
+  partial: Omit<
+    EventRecord,
+    "createdAt" | "status" | "rounds" | "kind" | "ownerId" | "signupMode" | "inviteCode" | "signups" | "cancelledAt" | "signupFields" | "signupCap"
+  > & {
     status?: EventRecord["status"];
     kind?: EventRecord["kind"];
     ownerId?: string;
     signupMode?: EventRecord["signupMode"];
     inviteCode?: string;
+    signupCap?: number;
+    signupFields?: EventRecord["signupFields"];
     signups?: EventSignup[];
   },
 ): EventRecord {
@@ -25,6 +30,8 @@ function event(
     ownerId: partial.ownerId ?? "",
     signupMode: partial.signupMode ?? "open",
     inviteCode: partial.inviteCode ?? "SEEDOPEN",
+    signupCap: partial.signupCap ?? 0,
+    signupFields: partial.signupFields ?? [],
     signups: partial.signups ?? [],
     cancelledAt: "",
     rounds: buildSingleElim(partial.teams),
@@ -33,7 +40,7 @@ function event(
 }
 
 function signup(id: string, name: string): EventSignup {
-  return { id, name, userId: "", createdAt: new Date().toISOString() };
+  return { id, name, userId: "", createdAt: new Date().toISOString(), answers: {} };
 }
 
 function inProgressPickup(record: EventRecord, winners: Array<[string, string]>) {

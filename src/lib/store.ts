@@ -5,6 +5,7 @@ import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
 import type { EventRecord, StoreData, UserRecord } from "./types";
+import { normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";
 
 const storePath = path.join(process.cwd(), "data", "store.json");
 
@@ -22,7 +23,9 @@ function normalizeEvent(event: EventRecord): EventRecord {
     ownerId: event.ownerId ?? "",
     signupMode: event.signupMode === "invite" ? "invite" : "open",
     inviteCode: event.inviteCode ?? "",
-    signups: event.signups ?? [],
+    signupCap: parseSignupCap(event.signupCap),
+    signupFields: normalizeSignupFields(event.signupFields),
+    signups: (event.signups ?? []).map(normalizeEventSignup),
     cancelledAt: event.cancelledAt ?? "",
     teams: event.teams ?? [],
     rounds: event.rounds ?? [],

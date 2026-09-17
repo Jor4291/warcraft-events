@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { cancelEvent, removeSignup, updateEvent } from "@/lib/actions";
+import { rosterExport, signupSpotsLabel } from "@/lib/signup-form";
 import type { EventRecord } from "@/lib/types";
+import { SignupFormBuilder } from "./SignupFormBuilder";
 
 function toDatetimeLocal(value: string) {
   if (!value) {
@@ -19,13 +21,14 @@ function toDatetimeLocal(value: string) {
 export function EventManage({ event, editKey }: { event: EventRecord; editKey: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   return (
     <section className="tavern-frame space-y-5 p-5">
       <div>
         <h2 className="tavern-title text-xl">Host controls</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Edit the listing, change how people join, or cancel.{" "}
+          Edit the listing, build the sign-up form, cap the roster, or cancel.{" "}
           {event.signupMode === "invite" ? (
             <>
               Invite code: <code className="text-[var(--gold)]">{event.inviteCode}</code>
@@ -75,6 +78,28 @@ export function EventManage({ event, editKey }: { event: EventRecord; editKey: s
             </label>
           </div>
         </fieldset>
+        <label className="block text-sm md:col-span-2">
+          Player cap
+          <input
+            name="signupCap"
+            type="number"
+            min={0}
+            max={1000}
+            defaultValue={event.signupCap || ""}
+            placeholder="Leave blank for no cap"
+            className="tavern-input max-w-xs"
+          />
+          <span className="mt-1 block text-xs text-[var(--muted)]">
+            Once the list hits this number, new players see that sign-ups are filled. Remove someone to open a seat.
+          </span>
+        </label>
+        <div className="md:col-span-2">
+          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">Sign-up questions</h3>
+          <p className="mt-1 mb-3 text-sm text-[var(--muted)]">
+            These questions appear on the public sign-up form. Character name is always required.
+          </p>
+          <SignupFormBuilder key={event.signupFields.map((field) => field.id).join("-") || "empty"} initialFields={event.signupFields} />
+        </div>
         {error ? <p className="text-red-300 md:col-span-2">{error}</p> : null}
         {message ? <p className="text-emerald-300 md:col-span-2">{message}</p> : null}
         <div className="md:col-span-2">
@@ -83,30 +108,60 @@ export function EventManage({ event, editKey }: { event: EventRecord; editKey: s
           </button>
         </div>
       </form>
-      {event.signups.length > 0 ? (
-        <div>
-          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">Sign-ups</h3>
-          <ul className="mt-2 space-y-2">
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">
+            Sign-ups · {signupSpotsLabel(event.signups.length, event.signupCap)}
+          </h3>
+          {event.signups.length > 0 ? (
+            <button
+              type="button"
+              className="tavern-btn-ghost px-3 py-1 text-sm"
+              onClick={async () => {
+                await navigator.clipboard.writeText(rosterExport(event));
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1600);
+              }}
+            >
+              {copied ? "Copied" : "Copy roster"}
+            </button>
+          ) : null}
+        </div>
+        {event.signups.length === 0 ? (
+          <p className="mt-2 text-sm text-[var(--muted)]">Nobody on the list yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
             {event.signups.map((signup) => (
-              <li key={signup.id} className="flex items-center justify-between gap-3 text-sm">
-                <span>{signup.name}</span>
-                <form
-                  action={async (formData) => {
-                    await removeSignup(formData);
-                  }}
-                >
-                  <input type="hidden" name="slug" value={event.slug} />
-                  <input type="hidden" name="editKey" value={editKey} />
-                  <input type="hidden" name="signupId" value={signup.id} />
-                  <button type="submit" className="text-[var(--muted)] hover:text-[var(--gold)]">
-                    Remove
-                  </button>
-                </form>
+              <li key={signup.id} className="border border-[var(--line)] p-3 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{signup.name}</p>
+                    {event.signupFields.map((field) =>
+                      signup.answers[field.id] ? (
+                        <p key={field.id} className="mt-1 text-[var(--muted)]">
+                          <span className="text-[var(--gold)]">{field.label}:</span> {signup.answers[field.id]}
+                        </p>
+                      ) : null,
+                    )}
+                  </div>
+                  <form
+                    action={async (formData) => {
+                      await removeSignup(formData);
+                    }}
+                  >
+                    <input type="hidden" name="slug" value={event.slug} />
+                    <input type="hidden" name="editKey" value={editKey} />
+                    <input type="hidden" name="signupId" value={signup.id} />
+                    <button type="submit" className="text-[var(--muted)] hover:text-[var(--gold)]">
+                      Remove
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
-        </div>
-      ) : null}
+        )}
+      </div>
       {event.cancelledAt ? (
         <p className="text-sm text-[var(--muted)]">This event is cancelled.</p>
       ) : (

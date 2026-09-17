@@ -18,6 +18,8 @@ export default async function EventsPage() {
       region: event.region,
       location: event.location,
       description: event.description,
+      signupCount: event.signups.length,
+      signupCap: event.signupCap,
     }));
 
   return (
