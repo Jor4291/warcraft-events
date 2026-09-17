@@ -719,15 +719,13 @@ export async function adminLogout() {
 
 export async function moderateLadderMatch(matchId: string, decision: "approved" | "denied") {
   if (!(await isAdmin())) {
-    return { error: "Not allowed." };
+    return;
   }
-  let found = false;
   await updateStore((data) => {
     const match = data.matches.find((item) => item.matchId === matchId);
     if (!match || match.confirmed) {
       return;
     }
-    found = true;
     if (decision === "approved") {
       const exportedAt = Math.floor(Date.now() / 1000);
       if (!match.reports.some((report) => report.hub)) {
@@ -743,11 +741,7 @@ export async function moderateLadderMatch(matchId: string, decision: "approved" 
     match.deniedAt = new Date().toISOString();
     match.confirmed = false;
   });
-  if (!found) {
-    return { error: "That duel is not waiting on you." };
-  }
   revalidatePath("/admin");
   revalidatePath("/ladder");
   revalidatePath("/");
-  return { ok: true as const };
 }
