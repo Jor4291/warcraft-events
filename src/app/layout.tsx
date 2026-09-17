@@ -1,6 +1,7 @@
 import { Cinzel, EB_Garamond } from "next/font/google";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import { SiteNav } from "@/components/SiteNav";
 import { getSessionUser } from "@/lib/auth";
 import { emptyInbox, playerInbox } from "@/lib/notices";
@@ -67,6 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <span className="mx-2">·</span>
           <Link href="/ladder/upload">Paste a duel log</Link>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
