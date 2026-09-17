@@ -28,12 +28,15 @@ export default async function HomePage() {
     <main className="mx-auto w-full max-w-6xl px-6 py-12">
       <section className="tavern-frame mb-12 p-8 md:p-10">
         <p className="text-sm uppercase tracking-[0.28em] text-[var(--gold)]">The Lion&apos;s Pride · WarcraftEvents.com</p>
-        <h1 className="tavern-title mt-3 max-w-3xl text-4xl leading-tight md:text-5xl">
-          Pull up a stool. Check the board. Settle it in the yard.
+        <h1 className="tavern-title mt-3 max-w-3xl text-4xl leading-[1.15] md:text-5xl">
+          <span className="block">Pull up a stool.</span>
+          <span className="block">Check the board.</span>
+          <span className="block">Settle it in the yard.</span>
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
-          Book a night, hang a pickup bracket, or climb the Arena Ranked Duels board. Open events take
-          sign-ups from the calendar; private ones stay behind a door code.
+          <span className="block">Host an event.</span>
+          <span className="block">Grind the ranked ladder.</span>
+          <span className="block">Find something happening soon on the calendar.</span>
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/events/submit" className="tavern-btn no-underline">
