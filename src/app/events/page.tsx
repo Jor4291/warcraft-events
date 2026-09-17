@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EventExplorer } from "@/components/EventExplorer";
+import { confirmedSignups, waitlistedSignups } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
 export const metadata = { title: "Calendar" };
@@ -18,7 +19,8 @@ export default async function EventsPage() {
       region: event.region,
       location: event.location,
       description: event.description,
-      signupCount: event.signups.length,
+      signupCount: confirmedSignups(event).length,
+      waitlistCount: waitlistedSignups(event).length,
       signupCap: event.signupCap,
     }));
 

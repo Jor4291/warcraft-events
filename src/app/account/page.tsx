@@ -14,7 +14,9 @@ export default async function AccountPage() {
     redirect("/account/login");
   }
   const store = await getStore();
-  const mine = store.events.filter((event) => event.ownerId === user.id);
+  const mine = store.events.filter(
+    (event) => event.ownerId === user.id || event.coHosts.some((host) => host.userId === user.id),
+  );
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
@@ -50,9 +52,17 @@ export default async function AccountPage() {
                   {event.title}
                 </Link>
                 <p className="text-sm text-[var(--muted)]">
-                  {event.kind === "bracket" ? "Standalone bracket" : event.cancelledAt ? "Cancelled event" : "Calendar event"}
-                  {event.kind === "calendar" && event.signupMode === "invite" ? ` · code ${event.inviteCode}` : ""}
-                  {event.kind === "calendar" ? ` · ${signupSpotsLabel(event.signups.length, event.signupCap)}` : ""}
+                  {event.kind === "bracket"
+                    ? "Standalone bracket"
+                    : event.cancelledAt
+                      ? "Cancelled event"
+                      : event.ownerId === user.id
+                        ? "Calendar event"
+                        : "Co-host"}
+                  {event.kind === "calendar" && event.signupMode === "invite" && event.ownerId === user.id
+                    ? ` · code ${event.inviteCode}`
+                    : ""}
+                  {event.kind === "calendar" ? ` · ${signupSpotsLabel(event)}` : ""}
                 </p>
               </li>
             ))}

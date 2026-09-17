@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { signupSpotsLabel } from "@/lib/signup-form";
+import { formatSignupSpots } from "@/lib/signup-form";
 
 export type CalendarEvent = {
   slug: string;
@@ -14,6 +14,7 @@ export type CalendarEvent = {
   location: string;
   description: string;
   signupCount: number;
+  waitlistCount: number;
   signupCap: number;
 };
 
@@ -190,7 +191,7 @@ function ListView({ events }: { events: CalendarEvent[] }) {
           <h2 className="tavern-title mt-1 text-xl">{event.title}</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             {event.game} · {event.format || "Open format"} · {event.region || "All regions"} · {event.location}
-            {event.signupCap > 0 ? ` · ${signupSpotsLabel(event.signupCount, event.signupCap)}` : ""}
+            {event.signupCap > 0 || event.waitlistCount > 0 ? ` · ${formatSignupSpots(event.signupCount, event.signupCap, event.waitlistCount)}` : ""}
           </p>
           <p className="mt-2 text-[var(--foreground)]">{event.description}</p>
         </Link>
@@ -217,7 +218,7 @@ function GridView({ events }: { events: CalendarEvent[] }) {
           <p className="mt-2 flex-1 text-sm">{event.description}</p>
           <p className="mt-4 text-xs text-[var(--gold)]">
             {event.game} · {event.format || "Open format"}
-            {event.signupCap > 0 ? ` · ${signupSpotsLabel(event.signupCount, event.signupCap)}` : ""}
+            {event.signupCap > 0 || event.waitlistCount > 0 ? ` · ${formatSignupSpots(event.signupCount, event.signupCap, event.waitlistCount)}` : ""}
           </p>
         </Link>
       ))}

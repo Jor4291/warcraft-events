@@ -86,7 +86,21 @@ export function BookEventForm() {
           className="tavern-input"
         />
         <span className="mt-1 block text-xs text-[var(--muted)]">
-          Optional. When the list is full, players see that sign-ups are filled.
+          Optional. When the list is full, players can join a waitlist or see that sign-ups are filled.
+        </span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="waitlistEnabled" defaultChecked className="mt-1" />
+        <span>
+          Enable waitlist
+          <span className="mt-1 block text-xs text-[var(--muted)]">When the cap is full, extra players join a waitlist you can promote.</span>
+        </span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="rosterPublic" defaultChecked className="mt-1" />
+        <span>
+          Show player names on the public page
+          <span className="mt-1 block text-xs text-[var(--muted)]">Uncheck to keep the roster private. You will still see names and answers.</span>
         </span>
       </label>
       <div>

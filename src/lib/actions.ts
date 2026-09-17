@@ -7,11 +7,17 @@ import { isAdmin, loginAdmin, logoutAdmin } from "./admin";
 import { getSessionUser, hashUploadToken, hubNameList, loginUser, logoutUser, registerUser } from "./auth";
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
-import { canManageEvent } from "./event-access";
+import { canManageEvent, isEventOwner } from "./event-access";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { EventRecord, SignupMode } from "./types";
-import { collectSignupAnswers, eventIsFull, parseSignupCap, parseSignupFieldsJson } from "./signup-form";
+import {
+  collectSignupAnswers,
+  confirmedSignups,
+  eventIsFull,
+  parseSignupCap,
+  parseSignupFieldsJson,
+} from "./signup-form";
 
 function slugify(title: string) {
   const base = title
@@ -54,6 +60,31 @@ async function findManageable(slug: string, editKey: string) {
     return { error: "You cannot edit this board." as const };
   }
   return { event };
+}
+
+async function findOwned(slug: string, editKey: string) {
+  const found = await findManageable(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  if (!(await isEventOwner(found.event, editKey))) {
+    return { error: "Only the host can change co-hosts." as const };
+  }
+  return found;
+}
+
+function checkboxOn(formData: FormData, name: string) {
+  return formData.get(name) === "on";
+}
+
+function promoteNextWaitlisted(event: EventRecord) {
+  if (eventIsFull(event)) {
+    return;
+  }
+  const next = event.signups.find((signup) => signup.waitlisted);
+  if (next) {
+    next.waitlisted = false;
+  }
 }
 
 export async function registerAccount(formData: FormData) {
@@ -135,6 +166,9 @@ export async function submitEvent(formData: FormData) {
       inviteCode,
       signupCap: parseSignupCap(formData.get("signupCap")),
       signupFields: parseSignupFieldsJson(formData.get("signupFieldsJson")),
+      waitlistEnabled: checkboxOn(formData, "waitlistEnabled"),
+      rosterPublic: checkboxOn(formData, "rosterPublic"),
+      coHosts: [],
       signups: [],
       cancelledAt: "",
       editKey,
@@ -178,6 +212,8 @@ export async function updateEvent(formData: FormData) {
     target.signupMode = signupModeOf(formData.get("signupMode"));
     target.signupCap = parseSignupCap(formData.get("signupCap"));
     target.signupFields = parseSignupFieldsJson(formData.get("signupFieldsJson"));
+    target.waitlistEnabled = checkboxOn(formData, "waitlistEnabled");
+    target.rosterPublic = checkboxOn(formData, "rosterPublic");
   });
   revalidateEvent(found.event);
   return { ok: true as const };
@@ -224,18 +260,20 @@ export async function rsvpEvent(formData: FormData) {
     return { error: collected.error };
   }
   let error = "";
+  let waitlisted = false;
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
     if (!target) {
       error = "Event not found.";
       return;
     }
-    if (eventIsFull(target)) {
-      error = "The event sign-ups are filled.";
-      return;
-    }
     if (target.signups.some((signup) => signup.name.toLowerCase() === name.toLowerCase())) {
       error = "That name is already on the list.";
+      return;
+    }
+    waitlisted = eventIsFull(target);
+    if (waitlisted && !target.waitlistEnabled) {
+      error = "The event sign-ups are filled.";
       return;
     }
     target.signups.push({
@@ -244,13 +282,15 @@ export async function rsvpEvent(formData: FormData) {
       userId: user?.id || "",
       createdAt: new Date().toISOString(),
       answers: collected.answers,
+      waitlisted,
+      checkedIn: false,
     });
   });
   if (error) {
     return { error };
   }
   revalidatePath(`/events/${slug}`);
-  return { ok: true as const };
+  return { ok: true as const, waitlisted };
 }
 
 export async function removeSignup(formData: FormData) {
@@ -263,12 +303,202 @@ export async function removeSignup(formData: FormData) {
   }
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
-    if (target) {
-      target.signups = target.signups.filter((signup) => signup.id !== signupId);
+    if (!target) {
+      return;
+    }
+    const removed = target.signups.find((signup) => signup.id === signupId);
+    target.signups = target.signups.filter((signup) => signup.id !== signupId);
+    if (removed && !removed.waitlisted) {
+      promoteNextWaitlisted(target);
     }
   });
   revalidatePath(`/events/${slug}`);
   return { ok: true as const };
+}
+
+export async function promoteWaitlist(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const signupId = String(formData.get("signupId") || "");
+  const editKey = String(formData.get("editKey") || "");
+  const found = await findManageable(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  let error = "";
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    const signup = target?.signups.find((item) => item.id === signupId);
+    if (!target || !signup) {
+      error = "Sign-up not found.";
+      return;
+    }
+    if (!signup.waitlisted) {
+      return;
+    }
+    if (eventIsFull(target)) {
+      error = "The roster is still full. Raise the cap or remove someone first.";
+      return;
+    }
+    signup.waitlisted = false;
+  });
+  if (error) {
+    return { error };
+  }
+  revalidatePath(`/events/${slug}`);
+  return { ok: true as const };
+}
+
+export async function toggleCheckIn(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const signupId = String(formData.get("signupId") || "");
+  const editKey = String(formData.get("editKey") || "");
+  const found = await findManageable(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  await updateStore((data) => {
+    const signup = data.events.find((item) => item.slug === slug)?.signups.find((item) => item.id === signupId);
+    if (signup && !signup.waitlisted) {
+      signup.checkedIn = !signup.checkedIn;
+    }
+  });
+  revalidatePath(`/events/${slug}`);
+  return { ok: true as const };
+}
+
+export async function addCoHost(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const editKey = String(formData.get("editKey") || "");
+  const query = String(formData.get("email") || "").trim();
+  const found = await findOwned(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  if (!query) {
+    return { error: "Enter their account email or display name." };
+  }
+  const store = await getStore();
+  const byEmail = store.users.find((user) => user.email.toLowerCase() === query.toLowerCase());
+  const byName = store.users.filter((user) => user.displayName.toLowerCase() === query.toLowerCase());
+  const user = byEmail || (byName.length === 1 ? byName[0] : undefined);
+  if (!user) {
+    if (byName.length > 1) {
+      return { error: "Several accounts share that name. Use their email." };
+    }
+    return { error: "No account with that email or name. They need to register first." };
+  }
+  if (user.id === found.event.ownerId) {
+    return { error: "That's already the host." };
+  }
+  if (found.event.coHosts.some((host) => host.userId === user.id)) {
+    return { error: "They're already a co-host." };
+  }
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    if (!target || target.coHosts.some((host) => host.userId === user.id)) {
+      return;
+    }
+    target.coHosts.push({
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName,
+    });
+  });
+  revalidateEvent(found.event);
+  return { ok: true as const };
+}
+
+export async function removeCoHost(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const editKey = String(formData.get("editKey") || "");
+  const userId = String(formData.get("userId") || "");
+  const found = await findOwned(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    if (target) {
+      target.coHosts = target.coHosts.filter((host) => host.userId !== userId);
+    }
+  });
+  revalidateEvent(found.event);
+  return { ok: true as const };
+}
+
+export async function sendSignupsToBracket(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const editKey = String(formData.get("editKey") || "");
+  const found = await findManageable(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  const teams = confirmedSignups(found.event).map((signup) => signup.name);
+  if (teams.length < 2) {
+    return { error: "Add at least two names on the roster." };
+  }
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    if (!target) {
+      return;
+    }
+    target.teams = teams;
+    target.rounds = buildSingleElim(teams);
+  });
+  revalidateEvent(found.event);
+  return { ok: true as const };
+}
+
+export async function duplicateEvent(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const editKey = String(formData.get("editKey") || "");
+  const found = await findManageable(slug, editKey);
+  if ("error" in found) {
+    return found;
+  }
+  const source = found.event;
+  const user = await getSessionUser();
+  const id = randomBytes(6).toString("hex");
+  const nextEditKey = randomBytes(8).toString("hex");
+  const inviteCode = randomBytes(4).toString("hex").toUpperCase();
+  const nextSlug = slugify(`${source.title} copy`);
+  await updateStore((data) => {
+    data.events.unshift({
+      id,
+      slug: nextSlug,
+      title: `${source.title} (copy)`,
+      game: source.game,
+      format: source.format,
+      startsAt: source.startsAt,
+      endsAt: source.endsAt,
+      region: source.region,
+      location: source.location,
+      description: source.description,
+      contact: source.contact,
+      status: "published",
+      kind: source.kind,
+      ownerId: user?.id || source.ownerId,
+      signupMode: source.signupMode,
+      inviteCode,
+      signupCap: source.signupCap,
+      signupFields: source.signupFields,
+      waitlistEnabled: source.waitlistEnabled,
+      rosterPublic: source.rosterPublic,
+      coHosts: [],
+      signups: [],
+      cancelledAt: "",
+      editKey: nextEditKey,
+      whiteboard: "",
+      teams: [],
+      rounds: [],
+      createdAt: new Date().toISOString(),
+    });
+  });
+  revalidatePath("/events");
+  revalidatePath("/");
+  revalidatePath("/account");
+  revalidatePath(`/events/${nextSlug}`);
+  return { slug: nextSlug, editKey: nextEditKey, inviteCode };
 }
 
 export async function createStandaloneBracket(formData: FormData) {
@@ -301,6 +531,9 @@ export async function createStandaloneBracket(formData: FormData) {
       inviteCode: "",
       signupCap: 0,
       signupFields: [],
+      waitlistEnabled: true,
+      rosterPublic: true,
+      coHosts: [],
       signups: [],
       cancelledAt: "",
       editKey,

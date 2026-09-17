@@ -30,6 +30,14 @@ export type EventSignup = {
   userId: string;
   createdAt: string;
   answers: Record<string, string>;
+  waitlisted: boolean;
+  checkedIn: boolean;
+};
+
+export type EventCoHost = {
+  userId: string;
+  email: string;
+  displayName: string;
 };
 
 export type EventRecord = {
@@ -51,6 +59,9 @@ export type EventRecord = {
   inviteCode: string;
   signupCap: number;
   signupFields: SignupField[];
+  waitlistEnabled: boolean;
+  rosterPublic: boolean;
+  coHosts: EventCoHost[];
   signups: EventSignup[];
   cancelledAt: string;
   editKey: string;

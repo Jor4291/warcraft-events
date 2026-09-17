@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { cancelEvent, removeSignup, updateEvent } from "@/lib/actions";
-import { rosterExport, signupSpotsLabel } from "@/lib/signup-form";
-import type { EventRecord } from "@/lib/types";
+import {
+  addCoHost,
+  cancelEvent,
+  duplicateEvent,
+  promoteWaitlist,
+  removeCoHost,
+  removeSignup,
+  sendSignupsToBracket,
+  toggleCheckIn,
+  updateEvent,
+} from "@/lib/actions";
+import { confirmedSignups, rosterExport, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
+import type { EventRecord, EventSignup } from "@/lib/types";
 import { SignupFormBuilder } from "./SignupFormBuilder";
 
 function toDatetimeLocal(value: string) {
@@ -18,17 +28,19 @@ function toDatetimeLocal(value: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function EventManage({ event, editKey }: { event: EventRecord; editKey: string }) {
+export function EventManage({ event, editKey, isOwner }: { event: EventRecord; editKey: string; isOwner: boolean }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const confirmed = confirmedSignups(event);
+  const waiting = waitlistedSignups(event);
 
   return (
     <section className="tavern-frame space-y-5 p-5">
       <div>
         <h2 className="tavern-title text-xl">Host controls</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Edit the listing, build the sign-up form, cap the roster, or cancel.{" "}
+          Edit the listing, manage the roster, or send names to the bracket.{" "}
           {event.signupMode === "invite" ? (
             <>
               Invite code: <code className="text-[var(--gold)]">{event.inviteCode}</code>
@@ -37,6 +49,8 @@ export function EventManage({ event, editKey }: { event: EventRecord; editKey: s
             "Sign-up is open to anyone who finds this event."
           )}
         </p>
+        {error ? <p className="mt-2 text-sm text-red-300">{error}</p> : null}
+        {message ? <p className="mt-2 text-sm text-emerald-300">{message}</p> : null}
       </div>
       <form
         className="grid gap-3 md:grid-cols-2"
@@ -90,7 +104,25 @@ export function EventManage({ event, editKey }: { event: EventRecord; editKey: s
             className="tavern-input max-w-xs"
           />
           <span className="mt-1 block text-xs text-[var(--muted)]">
-            Once the list hits this number, new players see that sign-ups are filled. Remove someone to open a seat.
+            Once confirmed seats hit this number, new players join the waitlist or see that sign-ups are filled.
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm md:col-span-2">
+          <input type="checkbox" name="waitlistEnabled" defaultChecked={event.waitlistEnabled} className="mt-1" />
+          <span>
+            Enable waitlist
+            <span className="mt-1 block text-xs text-[var(--muted)]">
+              When the cap is full, new players can still join a waitlist. Promote them when a seat opens.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm md:col-span-2">
+          <input type="checkbox" name="rosterPublic" defaultChecked={event.rosterPublic} className="mt-1" />
+          <span>
+            Show player names on the public page
+            <span className="mt-1 block text-xs text-[var(--muted)]">
+              Uncheck to keep the roster private. Hosts and co-hosts still see names and answers.
+            </span>
           </span>
         </label>
         <div className="md:col-span-2">
@@ -108,79 +140,269 @@ export function EventManage({ event, editKey }: { event: EventRecord; editKey: s
           </button>
         </div>
       </form>
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">
-            Sign-ups · {signupSpotsLabel(event.signups.length, event.signupCap)}
-          </h3>
-          {event.signups.length > 0 ? (
-            <button
-              type="button"
-              className="tavern-btn-ghost px-3 py-1 text-sm"
-              onClick={async () => {
-                await navigator.clipboard.writeText(rosterExport(event));
-                setCopied(true);
-                window.setTimeout(() => setCopied(false), 1600);
-              }}
-            >
-              {copied ? "Copied" : "Copy roster"}
-            </button>
-          ) : null}
-        </div>
-        {event.signups.length === 0 ? (
-          <p className="mt-2 text-sm text-[var(--muted)]">Nobody on the list yet.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {event.signups.map((signup) => (
-              <li key={signup.id} className="border border-[var(--line)] p-3 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{signup.name}</p>
-                    {event.signupFields.map((field) =>
-                      signup.answers[field.id] ? (
-                        <p key={field.id} className="mt-1 text-[var(--muted)]">
-                          <span className="text-[var(--gold)]">{field.label}:</span> {signup.answers[field.id]}
-                        </p>
-                      ) : null,
-                    )}
-                  </div>
+
+      {isOwner ? (
+        <div>
+          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">Co-hosts</h3>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Co-hosts can edit the listing, roster, and bracket. They cannot add other co-hosts.
+          </p>
+          {event.coHosts.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">No co-hosts yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {event.coHosts.map((host) => (
+                <li key={host.userId} className="flex items-center justify-between gap-3 border border-[var(--line)] p-3 text-sm">
+                  <span>
+                    <span className="font-semibold">{host.displayName}</span>
+                    {host.email ? <span className="text-[var(--muted)]"> · {host.email}</span> : null}
+                  </span>
                   <form
                     action={async (formData) => {
-                      await removeSignup(formData);
+                      await removeCoHost(formData);
                     }}
                   >
                     <input type="hidden" name="slug" value={event.slug} />
                     <input type="hidden" name="editKey" value={editKey} />
-                    <input type="hidden" name="signupId" value={signup.id} />
+                    <input type="hidden" name="userId" value={host.userId} />
                     <button type="submit" className="text-[var(--muted)] hover:text-[var(--gold)]">
                       Remove
                     </button>
                   </form>
-                </div>
-              </li>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            className="mt-3 flex flex-wrap gap-2"
+            action={async (formData) => {
+              setError("");
+              setMessage("");
+              const result = await addCoHost(formData);
+              if (result && "error" in result && result.error) {
+                setError(result.error);
+                return;
+              }
+              setMessage("Co-host added.");
+            }}
+          >
+            <input type="hidden" name="slug" value={event.slug} />
+            <input type="hidden" name="editKey" value={editKey} />
+            <input name="email" placeholder="Account email or display name" className="tavern-input max-w-sm" />
+            <button type="submit" className="tavern-btn-ghost">
+              Add co-host
+            </button>
+          </form>
+        </div>
+      ) : event.coHosts.length > 0 ? (
+        <p className="text-sm text-[var(--muted)]">
+          Co-hosts: {event.coHosts.map((host) => host.displayName).join(", ")}
+        </p>
+      ) : null}
+
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">
+            Roster · {signupSpotsLabel(event)}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {event.signups.length > 0 ? (
+              <button
+                type="button"
+                className="tavern-btn-ghost px-3 py-1 text-sm"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(rosterExport(event));
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1600);
+                }}
+              >
+                {copied ? "Copied" : "Copy roster"}
+              </button>
+            ) : null}
+            <form
+              action={async (formData) => {
+                if (!window.confirm("This rebuilds the bracket from the current roster and clears winners.")) {
+                  return;
+                }
+                setError("");
+                setMessage("");
+                const result = await sendSignupsToBracket(formData);
+                if (result && "error" in result && result.error) {
+                  setError(result.error);
+                  return;
+                }
+                setMessage("Bracket rebuilt from the roster.");
+              }}
+            >
+              <input type="hidden" name="slug" value={event.slug} />
+              <input type="hidden" name="editKey" value={editKey} />
+              <button type="submit" className="tavern-btn-ghost px-3 py-1 text-sm">
+                Send to bracket
+              </button>
+            </form>
+          </div>
+        </div>
+        {confirmed.length === 0 ? (
+          <p className="mt-2 text-sm text-[var(--muted)]">Nobody on the roster yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {confirmed.map((signup) => (
+              <SignupRow
+                key={signup.id}
+                event={event}
+                signup={signup}
+                editKey={editKey}
+                waitlisted={false}
+                onError={setError}
+              />
             ))}
           </ul>
         )}
       </div>
-      {event.cancelledAt ? (
-        <p className="text-sm text-[var(--muted)]">This event is cancelled.</p>
-      ) : (
+
+      {event.waitlistEnabled || waiting.length > 0 ? (
+        <div>
+          <h3 className="text-sm uppercase tracking-[0.18em] text-[var(--gold)]">Waitlist · {waiting.length}</h3>
+          {waiting.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">The waitlist is empty.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {waiting.map((signup) => (
+                <SignupRow
+                  key={signup.id}
+                  event={event}
+                  signup={signup}
+                  editKey={editKey}
+                  waitlisted
+                  onError={setError}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
         <form
           action={async (formData) => {
-            if (!window.confirm("Cancel this event? It will stay listed as cancelled.")) {
+            if (!window.confirm("Copy this event as a new listing with an empty roster?")) {
               return;
             }
-            await cancelEvent(formData);
+            setError("");
+            const result = await duplicateEvent(formData);
+            if (result && "error" in result && result.error) {
+              setError(result.error);
+              return;
+            }
+            if (result && "slug" in result && result.slug) {
+              window.location.href = `/events/${result.slug}?key=${result.editKey}`;
+            }
           }}
         >
           <input type="hidden" name="slug" value={event.slug} />
           <input type="hidden" name="editKey" value={editKey} />
           <button type="submit" className="tavern-btn-ghost">
-            Cancel event
+            Duplicate event
           </button>
         </form>
-      )}
+        {event.cancelledAt ? (
+          <p className="self-center text-sm text-[var(--muted)]">This event is cancelled.</p>
+        ) : (
+          <form
+            action={async (formData) => {
+              if (!window.confirm("Cancel this event? It will stay listed as cancelled.")) {
+                return;
+              }
+              await cancelEvent(formData);
+            }}
+          >
+            <input type="hidden" name="slug" value={event.slug} />
+            <input type="hidden" name="editKey" value={editKey} />
+            <button type="submit" className="tavern-btn-ghost">
+              Cancel event
+            </button>
+          </form>
+        )}
+      </div>
     </section>
+  );
+}
+
+function SignupRow({
+  event,
+  signup,
+  editKey,
+  waitlisted,
+  onError,
+}: {
+  event: EventRecord;
+  signup: EventSignup;
+  editKey: string;
+  waitlisted: boolean;
+  onError: (message: string) => void;
+}) {
+  return (
+    <li className="border border-[var(--line)] p-3 text-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold">
+            {signup.name}
+            {signup.checkedIn ? <span className="ml-2 text-xs uppercase tracking-[0.14em] text-[var(--gold)]">Checked in</span> : null}
+          </p>
+          {event.signupFields.map((field) =>
+            signup.answers[field.id] ? (
+              <p key={field.id} className="mt-1 text-[var(--muted)]">
+                <span className="text-[var(--gold)]">{field.label}:</span> {signup.answers[field.id]}
+              </p>
+            ) : null,
+          )}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {waitlisted ? (
+            <form
+              action={async (formData) => {
+                const result = await promoteWaitlist(formData);
+                if (result && "error" in result && result.error) {
+                  onError(result.error);
+                }
+              }}
+            >
+              <input type="hidden" name="slug" value={event.slug} />
+              <input type="hidden" name="editKey" value={editKey} />
+              <input type="hidden" name="signupId" value={signup.id} />
+              <button type="submit" className="text-[var(--muted)] hover:text-[var(--gold)]">
+                Promote
+              </button>
+            </form>
+          ) : (
+            <form
+              action={async (formData) => {
+                await toggleCheckIn(formData);
+              }}
+            >
+              <input type="hidden" name="slug" value={event.slug} />
+              <input type="hidden" name="editKey" value={editKey} />
+              <input type="hidden" name="signupId" value={signup.id} />
+              <button type="submit" className="text-[var(--muted)] hover:text-[var(--gold)]">
+                {signup.checkedIn ? "Undo check-in" : "Check in"}
+              </button>
+            </form>
+          )}
+          <form
+            action={async (formData) => {
+              await removeSignup(formData);
+            }}
+          >
+            <input type="hidden" name="slug" value={event.slug} />
+            <input type="hidden" name="editKey" value={editKey} />
+            <input type="hidden" name="signupId" value={signup.id} />
+            <button type="submit" className="text-[var(--muted)] hover:text-[var(--gold)]">
+              Remove
+            </button>
+          </form>
+        </div>
+      </div>
+    </li>
   );
 }
 

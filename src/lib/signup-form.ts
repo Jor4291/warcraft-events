@@ -1,4 +1,4 @@
-import type { EventRecord, EventSignup, SignupField, SignupFieldType } from "./types";
+import type { EventCoHost, EventRecord, EventSignup, SignupField, SignupFieldType } from "./types";
 
 const FIELD_TYPES: SignupFieldType[] = ["short", "long", "choice"];
 const MAX_FIELDS = 12;
@@ -81,21 +81,63 @@ export function normalizeEventSignup(signup: EventSignup): EventSignup {
   return {
     ...signup,
     answers: normalizeSignupAnswers(signup.answers),
+    waitlisted: Boolean(signup.waitlisted),
+    checkedIn: Boolean(signup.checkedIn),
   };
 }
 
-export function eventIsFull(event: Pick<EventRecord, "signupCap" | "signups">): boolean {
-  return event.signupCap > 0 && event.signups.length >= event.signupCap;
+export function normalizeCoHosts(raw: unknown): EventCoHost[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const hosts: EventCoHost[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const row = item as Partial<EventCoHost>;
+    const userId = String(row.userId || "").trim();
+    if (!userId || hosts.some((host) => host.userId === userId)) {
+      continue;
+    }
+    hosts.push({
+      userId,
+      email: String(row.email || "").trim(),
+      displayName: String(row.displayName || "").trim() || "Co-host",
+    });
+  }
+  return hosts;
 }
 
-export function signupSpotsLabel(count: number, cap: number) {
+export function confirmedSignups(event: Pick<EventRecord, "signups">) {
+  return (event.signups ?? []).filter((signup) => !signup.waitlisted);
+}
+
+export function waitlistedSignups(event: Pick<EventRecord, "signups">) {
+  return (event.signups ?? []).filter((signup) => signup.waitlisted);
+}
+
+export function eventIsFull(event: Pick<EventRecord, "signupCap" | "signups">): boolean {
+  return event.signupCap > 0 && confirmedSignups(event).length >= event.signupCap;
+}
+
+export function formatSignupSpots(confirmed: number, cap: number, waiting = 0) {
+  let label = "";
   if (cap <= 0) {
-    return count === 1 ? "1 signed up" : `${count} signed up`;
+    label = confirmed === 1 ? "1 signed up" : `${confirmed} signed up`;
+  } else if (confirmed >= cap) {
+    label = `Full · ${cap}/${cap}`;
+  } else {
+    label = `${confirmed}/${cap} signed up`;
   }
-  if (count >= cap) {
-    return `Full · ${cap}/${cap}`;
+  if (waiting > 0) {
+    label += ` · ${waiting} waitlist`;
   }
-  return `${count}/${cap} signed up`;
+  return label;
+}
+
+export function signupSpotsLabel(event: Pick<EventRecord, "signupCap" | "signups">) {
+  return formatSignupSpots(confirmedSignups(event).length, event.signupCap, waitlistedSignups(event).length);
 }
 
 export function collectSignupAnswers(
@@ -123,9 +165,11 @@ export function collectSignupAnswers(
 }
 
 export function rosterExport(event: EventRecord) {
-  const headers = ["Name", ...event.signupFields.map((field) => field.label)];
+  const headers = ["Name", "Status", "Checked in", ...event.signupFields.map((field) => field.label)];
   const rows = event.signups.map((signup) => [
     signup.name,
+    signup.waitlisted ? "Waitlist" : "Roster",
+    signup.checkedIn ? "Yes" : "",
     ...event.signupFields.map((field) => signup.answers[field.id] || ""),
   ]);
   return [headers, ...rows].map((row) => row.join("\t")).join("\n");

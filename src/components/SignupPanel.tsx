@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { rsvpEvent } from "@/lib/actions";
-import { signupSpotsLabel } from "@/lib/signup-form";
 import type { SignupField, SignupMode } from "@/lib/types";
 
 export function SignupPanel({
@@ -10,31 +9,33 @@ export function SignupPanel({
   signupMode,
   defaultName,
   fields,
-  signupCap,
-  signupCount,
+  spotsLabel,
+  isFull,
+  waitlistEnabled,
 }: {
   slug: string;
   signupMode: SignupMode;
   defaultName: string;
   fields: SignupField[];
-  signupCap: number;
-  signupCount: number;
+  spotsLabel: string;
+  isFull: boolean;
+  waitlistEnabled: boolean;
 }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const isFull = signupCap > 0 && signupCount >= signupCap;
+  const joiningWaitlist = isFull && waitlistEnabled;
 
   useEffect(() => {
     setError("");
     setMessage("");
-  }, [signupCount, isFull]);
+  }, [spotsLabel, isFull, waitlistEnabled]);
 
-  if (isFull) {
+  if (isFull && !waitlistEnabled) {
     return (
       <section className="tavern-frame p-5">
         <h2 className="tavern-title text-xl">Sign up</h2>
         <p className="mt-2 text-[var(--muted)]">The event sign-ups are filled.</p>
-        <p className="mt-1 text-sm text-[var(--gold)]">{signupSpotsLabel(signupCount, signupCap)}</p>
+        <p className="mt-1 text-sm text-[var(--gold)]">{spotsLabel}</p>
       </section>
     );
   }
@@ -43,10 +44,12 @@ export function SignupPanel({
     <section className="tavern-frame p-5">
       <h2 className="tavern-title text-xl">Sign up</h2>
       <p className="mt-1 mb-4 text-sm text-[var(--muted)]">
-        {signupMode === "invite"
-          ? "This gathering is invite-only. Ask the host for the door code."
-          : "Open sign-up — add your character name to the list."}
-        {signupCap > 0 ? ` ${signupSpotsLabel(signupCount, signupCap)}.` : ""}
+        {joiningWaitlist
+          ? "The roster is full. You can join the waitlist."
+          : signupMode === "invite"
+            ? "This gathering is invite-only. Ask the host for the door code."
+            : "Open sign-up — add your character name to the list."}{" "}
+        {spotsLabel}.
       </p>
       <form
         className="grid gap-3 sm:grid-cols-2"
@@ -58,7 +61,7 @@ export function SignupPanel({
             setError(result.error);
             return;
           }
-          setMessage("You are on the list.");
+          setMessage(result && "waitlisted" in result && result.waitlisted ? "You are on the waitlist." : "You are on the list.");
         }}
       >
         <input type="hidden" name="slug" value={slug} />
@@ -96,7 +99,7 @@ export function SignupPanel({
         {message ? <p className="text-emerald-300 sm:col-span-2">{message}</p> : null}
         <div className="sm:col-span-2">
           <button type="submit" className="tavern-btn">
-            Join this event
+            {joiningWaitlist ? "Join the waitlist" : "Join this event"}
           </button>
         </div>
       </form>

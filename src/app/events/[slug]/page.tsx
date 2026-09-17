@@ -3,8 +3,8 @@ import { BracketBoard } from "@/components/BracketBoard";
 import { EventManage } from "@/components/EventManage";
 import { SignupPanel } from "@/components/SignupPanel";
 import { getSessionUser } from "@/lib/auth";
-import { canManageEvent } from "@/lib/event-access";
-import { signupSpotsLabel } from "@/lib/signup-form";
+import { canManageEvent, isEventOwner } from "@/lib/event-access";
+import { confirmedSignups, eventIsFull, signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
 export default async function EventPage({
@@ -23,10 +23,14 @@ export default async function EventPage({
   }
   const user = await getSessionUser();
   const canEdit = await canManageEvent(event, key);
+  const isOwner = await isEventOwner(event, key);
   const canView = event.status === "published" || canEdit;
   if (!canView) {
     notFound();
   }
+  const roster = confirmedSignups(event);
+  const showRoster = event.rosterPublic || canEdit;
+  const spots = signupSpotsLabel(event);
 
   return (
     <main className="mx-auto w-full max-w-[100rem] space-y-8 px-4 py-12 md:px-8">
@@ -34,7 +38,7 @@ export default async function EventPage({
         <p className="text-sm uppercase tracking-[0.2em] text-[var(--muted)]">
           {event.cancelledAt ? "cancelled" : event.status} · {event.game} · {event.region || "All regions"} ·{" "}
           {event.signupMode === "invite" ? "Invite only" : "Open sign-up"}
-          {event.signupCap > 0 ? ` · ${signupSpotsLabel(event.signups.length, event.signupCap)}` : ""}
+          {event.signupCap > 0 || roster.length > 0 ? ` · ${spots}` : ""}
         </p>
         <h1 className="tavern-title mt-2 text-4xl">{event.title}</h1>
         <p className="mt-3 max-w-3xl text-[var(--muted)]">{event.description}</p>
@@ -53,25 +57,31 @@ export default async function EventPage({
           signupMode={event.signupMode}
           defaultName={user?.displayName || ""}
           fields={event.signupFields}
-          signupCap={event.signupCap}
-          signupCount={event.signups.length}
+          spotsLabel={spots}
+          isFull={eventIsFull(event)}
+          waitlistEnabled={event.waitlistEnabled}
         />
       ) : null}
 
-      {event.signups.length > 0 ? (
+      {roster.length > 0 ? (
         <section className="tavern-frame p-5">
-          <h2 className="tavern-title text-xl">On the list ({signupSpotsLabel(event.signups.length, event.signupCap)})</h2>
-          <ul className="mt-3 columns-1 gap-8 sm:columns-2">
-            {event.signups.map((signup) => (
-              <li key={signup.id} className="mb-1 text-sm">
-                {signup.name}
-              </li>
-            ))}
-          </ul>
+          <h2 className="tavern-title text-xl">On the list ({spots})</h2>
+          {showRoster ? (
+            <ul className="mt-3 columns-1 gap-8 sm:columns-2">
+              {roster.map((signup) => (
+                <li key={signup.id} className="mb-1 text-sm">
+                  {signup.name}
+                  {canEdit && signup.checkedIn ? <span className="ml-2 text-xs text-[var(--gold)]">in</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--muted)]">The host is keeping the roster private.</p>
+          )}
         </section>
       ) : null}
 
-      {canEdit ? <EventManage event={event} editKey={key || event.editKey} /> : null}
+      {canEdit ? <EventManage event={event} editKey={key || event.editKey} isOwner={isOwner} /> : null}
 
       <div>
         <BracketBoard
