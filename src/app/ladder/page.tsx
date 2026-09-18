@@ -45,6 +45,9 @@ export default async function LadderPage({
           <Link href="/ladder/upload" className="tavern-btn-ghost no-underline">
             Paste a log
           </Link>
+          <a href="/ladder.csv" className="tavern-btn-ghost no-underline" download>
+            Export board
+          </a>
         </div>
       </div>
       <div className="mb-6">

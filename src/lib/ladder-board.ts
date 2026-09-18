@@ -1,4 +1,4 @@
-import { classToken, formatClassName } from "./display";
+import { classToken, formatClassName, getArenaTitle } from "./display";
 import { namesEqual } from "./player-name";
 import type { LadderMatch, LadderPlayer } from "./types";
 
@@ -170,6 +170,36 @@ export function buildBoardRows(
 
   sortRows(rows, options.sort);
   return rows;
+}
+
+function csvCell(value: string | number) {
+  const text = String(value);
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+export function officialLeaderboardCsv(players: LadderPlayer[]) {
+  const rows = buildBoardRows(players, { search: "", classFilter: "", groupBy: "overall", sort: "rating" });
+  const header = ["Rank", "Name", "Title", "Class", "Race", "Guild", "Wins", "Losses", "Win%", "Peak", "Rating"];
+  const body = rows.map((row, index) => {
+    const title = getArenaTitle(row.points, row.games);
+    return [
+      index + 1,
+      row.name,
+      title.name,
+      formatClassName(row.className),
+      row.race,
+      row.guild,
+      row.wins,
+      row.losses,
+      row.games === 0 ? "" : (row.winRate * 100).toFixed(1),
+      Math.round(row.peak),
+      Math.round(row.points),
+    ];
+  });
+  return [header, ...body].map((line) => line.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }
 
 export function matchesForPlayer(matches: BoardMatch[], name: string) {
