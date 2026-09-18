@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import { emptyStore, withPlaceholderEvents } from "./seed";
+import { emptyStore, withoutPlaceholderEvents } from "./seed";
 import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
@@ -50,7 +50,7 @@ function normalizeUser(user: UserRecord): UserRecord {
 }
 
 function normalize(data: Partial<StoreData> | StoreData): StoreData {
-  return withPlaceholderEvents(
+  return withoutPlaceholderEvents(
     normalizeLadderIdentities({
       events: (data.events ?? []).map(normalizeEvent),
       matches: data.matches ?? [],
@@ -108,7 +108,11 @@ export async function getStore(): Promise<StoreData> {
     const raw = await readPostgres();
     const next = normalize(raw);
     identityRewriteQueued = true;
-    if (ladderIdentitiesChanged(raw, next) || raw.events.length !== next.events.length) {
+    if (
+      ladderIdentitiesChanged(raw, next) ||
+      raw.events.length !== next.events.length ||
+      raw.threads.length !== next.threads.length
+    ) {
       void updateStore((data) => data).catch((error) => {
         identityRewriteQueued = false;
         console.error("Failed to persist store rewrite", error);
