@@ -6,16 +6,14 @@ import { createStandaloneBracket } from "@/lib/actions";
 
 export function CreateBracketForm() {
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ slug: string; editKey: string } | null>(null);
+  const [result, setResult] = useState<{ slug: string } | null>(null);
 
   if (result) {
     return (
       <div className="tavern-parchment p-6">
-        <p>Board is hung. Save this link — it is how you pick winners if you are not signed in.</p>
+        <p>Lasting board is hung on this account. Open it to pick winners later.</p>
         <p className="mt-3 break-all text-sm">
-          <a href={`/bracket/${result.slug}?key=${result.editKey}`}>
-            /bracket/{result.slug}?key={result.editKey}
-          </a>
+          <a href={`/bracket/${result.slug}`}>/bracket/{result.slug}</a>
         </p>
       </div>
     );
@@ -46,10 +44,11 @@ export function CreateBracketForm() {
       </label>
       {error ? <p className="text-red-300">{error}</p> : null}
       <button type="submit" className="tavern-btn">
-        Hang a bracket
+        Hang a lasting board
       </button>
       <p className="text-sm text-[var(--muted)]">
-        Need a date, sign-ups, and a listing? <Link href="/events/submit">Book an event</Link> instead.
+        Need a date, sign-ups, and a listing? <Link href="/events/submit">Book an event</Link> instead. For a
+        throwaway night, use the scratch board above.
       </p>
     </form>
   );

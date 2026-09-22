@@ -40,6 +40,11 @@ export type EventCoHost = {
   displayName: string;
 };
 
+export type EventLink = {
+  label: string;
+  url: string;
+};
+
 export type EventRecord = {
   id: string;
   slug: string;
@@ -51,6 +56,7 @@ export type EventRecord = {
   region: string;
   location: string;
   description: string;
+  links: EventLink[];
   contact: string;
   status: EventStatus;
   kind: EventKind;
@@ -102,6 +108,7 @@ export type PublicUser = {
   email: string;
   displayName: string;
   isHub: boolean;
+  isInnkeeper: boolean;
   hasUploadToken: boolean;
 };
 

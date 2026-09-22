@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { logoutAccount, markNoticesRead } from "@/lib/actions";
 import { noticeCopy, type PlayerInbox } from "@/lib/notices";
@@ -23,6 +23,7 @@ export function AccountMenu({
   user,
   inbox,
   rating,
+  innkeeper,
   open,
   onToggle,
   onNavigate,
@@ -30,20 +31,25 @@ export function AccountMenu({
   user: PublicUser | null;
   inbox: PlayerInbox;
   rating: { name: string; points: number } | null;
+  innkeeper: boolean;
   open: boolean;
   onToggle: () => void;
   onNavigate: () => void;
 }) {
-  const [unread, setUnread] = useState(inbox.unread);
+  const [countedUnread, setCountedUnread] = useState(inbox.unread);
+  const [opened, setOpened] = useState(false);
   const nights = inbox.nights.filter((night) => !night.cancelled).slice(0, 5);
 
-  useEffect(() => {
-    setUnread(inbox.unread);
-  }, [inbox.unread]);
+  // A fresh count from the server means there are notices this reader has not cleared yet.
+  if (countedUnread !== inbox.unread) {
+    setCountedUnread(inbox.unread);
+    setOpened(false);
+  }
+  const unread = opened ? 0 : inbox.unread;
 
   function handleToggle() {
     if (!open && unread > 0) {
-      setUnread(0);
+      setOpened(true);
       void markNoticesRead();
     }
     onToggle();
@@ -127,6 +133,11 @@ export function AccountMenu({
                 <Link href="/account" onClick={onNavigate}>
                   Account
                 </Link>
+                {innkeeper ? (
+                  <Link href="/admin" onClick={onNavigate}>
+                    Innkeeper desk
+                  </Link>
+                ) : null}
                 {rating ? (
                   <Link href={`/ladder?player=${encodeURIComponent(rating.name)}`} onClick={onNavigate}>
                     Your rating · {rating.points}
@@ -152,6 +163,11 @@ export function AccountMenu({
               <Link href="/account/register" onClick={onNavigate}>
                 Register
               </Link>
+              {innkeeper ? (
+                <Link href="/admin" onClick={onNavigate}>
+                  Innkeeper desk
+                </Link>
+              ) : null}
             </>
           )}
         </div>

@@ -5,19 +5,16 @@ import { getStore } from "@/lib/store";
 
 export default async function StandaloneBracketPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ key?: string }>;
 }) {
   const { slug } = await params;
-  const { key = "" } = await searchParams;
   const store = await getStore();
   const event = store.events.find((item) => item.slug === slug && item.kind === "bracket");
   if (!event || event.status !== "published") {
     notFound();
   }
-  const canEdit = await canManageEvent(event, key);
+  const canEdit = await canManageEvent(event);
 
   return (
     <main className="mx-auto w-full max-w-[100rem] px-4 py-12 md:px-8">
@@ -29,7 +26,7 @@ export default async function StandaloneBracketPage({
       <div className="mt-10">
         <BracketBoard
           slug={event.slug}
-          editKey={canEdit ? key || event.editKey : ""}
+          editKey=""
           canEdit={canEdit}
           whiteboard={event.whiteboard}
           teams={event.teams}

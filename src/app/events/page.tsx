@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EventExplorer } from "@/components/EventExplorer";
+import { stripEventCopy } from "@/lib/event-copy";
 import { confirmedSignups, waitlistedSignups } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
@@ -18,7 +19,7 @@ export default async function EventsPage() {
       startsAt: event.startsAt,
       region: event.region,
       location: event.location,
-      description: event.description,
+      description: stripEventCopy(event.description),
       signupCount: confirmedSignups(event).length,
       waitlistCount: waitlistedSignups(event).length,
       signupCap: event.signupCap,

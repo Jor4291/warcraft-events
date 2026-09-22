@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { adminLogout, moderateEvent, moderateLadderMatch } from "@/lib/actions";
 import { classColor, formatClassName } from "@/lib/display";
+import { stripEventCopy } from "@/lib/event-copy";
 import { confirmedSignups, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
 import type { EventRecord, LadderMatch } from "@/lib/types";
 
@@ -48,6 +49,7 @@ function eventKindLabel(event: EventRecord) {
 
 export function InnkeeperDesk({
   desk,
+  passwordSession,
   pendingDuels,
   deniedDuels,
   pendingEvents,
@@ -56,6 +58,7 @@ export function InnkeeperDesk({
   rejectedEvents,
 }: {
   desk: InnkeeperDeskId;
+  passwordSession: boolean;
   pendingDuels: LadderMatch[];
   deniedDuels: LadderMatch[];
   pendingEvents: EventRecord[];
@@ -72,11 +75,15 @@ export function InnkeeperDesk({
             Confirm single duel reports for the official ladder, or hang nights on the calendar.
           </p>
         </div>
-        <form action={adminLogout}>
-          <button className="tavern-btn-ghost px-3 py-1 text-sm" type="submit">
-            Log out
-          </button>
-        </form>
+        {passwordSession ? (
+          <form action={adminLogout}>
+            <button className="tavern-btn-ghost px-3 py-1 text-sm" type="submit">
+              Log out
+            </button>
+          </form>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">Signed in as innkeeper</p>
+        )}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -276,7 +283,9 @@ function EventCard({ event, pending = false }: { event: EventRecord; pending?: b
           <p className="mt-1 text-sm text-[var(--muted)]">{meta.join(" · ")}</p>
         </div>
       </div>
-      {pending && event.description ? <p className="mt-3 text-sm">{event.description}</p> : null}
+      {pending && event.description ? (
+        <p className="mt-3 text-sm">{stripEventCopy(event.description)}</p>
+      ) : null}
       {pending ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <form action={moderateEvent.bind(null, event.id, "published")}>

@@ -84,7 +84,7 @@ export function BracketBoard({
   );
 }
 
-function TraditionalBracket({
+export function TraditionalBracket({
   heading,
   rounds,
   canEdit,

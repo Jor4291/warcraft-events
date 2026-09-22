@@ -3,7 +3,7 @@
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isAdmin, loginAdmin, logoutAdmin } from "./admin";
+import { isInnkeeper, loginAdmin, logoutAdmin } from "./admin";
 import { getSessionUser, hashUploadToken, hubNameList, loginUser, logoutUser, registerUser } from "./auth";
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
@@ -21,6 +21,7 @@ import {
   parseSignupCap,
   parseSignupFieldsJson,
 } from "./signup-form";
+import { parseEventLinksJson } from "./event-links";
 
 function slugify(title: string) {
   const base = title
@@ -88,24 +89,24 @@ function revalidateEvent(event: EventRecord) {
   }
 }
 
-async function findManageable(slug: string, editKey: string) {
+async function findManageable(slug: string) {
   const store = await getStore();
   const event = store.events.find((item) => item.slug === slug);
   if (!event) {
     return { error: "Event not found." as const };
   }
-  if (!(await canManageEvent(event, editKey))) {
+  if (!(await canManageEvent(event))) {
     return { error: "You cannot edit this board." as const };
   }
   return { event };
 }
 
-async function findOwned(slug: string, editKey: string) {
-  const found = await findManageable(slug, editKey);
+async function findOwned(slug: string) {
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
-  if (!(await isEventOwner(found.event, editKey))) {
+  if (!(await isEventOwner(found.event))) {
     return { error: "Only the host can change co-hosts." as const };
   }
   return found;
@@ -221,6 +222,7 @@ export async function submitEvent(formData: FormData) {
       region: String(formData.get("region") || "").trim(),
       location: String(formData.get("location") || "").trim(),
       description,
+      links: parseEventLinksJson(formData.get("linksJson")),
       contact: String(formData.get("contact") || user.displayName).trim(),
       status: "published",
       kind: "calendar",
@@ -247,13 +249,12 @@ export async function submitEvent(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/account");
   revalidateBoard(topic.slug, topic.forumId, slug);
-  return { slug, editKey, inviteCode, signupMode: mode };
+  return { slug, inviteCode, signupMode: mode };
 }
 
 export async function updateEvent(formData: FormData) {
   const slug = String(formData.get("slug") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -274,6 +275,7 @@ export async function updateEvent(formData: FormData) {
     target.region = String(formData.get("region") || "").trim();
     target.location = String(formData.get("location") || "").trim();
     target.description = String(formData.get("description") || "").trim();
+    target.links = parseEventLinksJson(formData.get("linksJson"));
     target.contact = String(formData.get("contact") || "").trim();
     target.signupMode = signupModeOf(formData.get("signupMode"));
     target.signupCap = parseSignupCap(formData.get("signupCap"));
@@ -287,8 +289,7 @@ export async function updateEvent(formData: FormData) {
 
 export async function cancelEvent(formData: FormData) {
   const slug = String(formData.get("slug") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -376,8 +377,7 @@ export async function rsvpEvent(formData: FormData) {
 export async function removeSignup(formData: FormData) {
   const slug = String(formData.get("slug") || "");
   const signupId = String(formData.get("signupId") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -466,8 +466,7 @@ export async function markNoticesRead() {
 export async function promoteWaitlist(formData: FormData) {
   const slug = String(formData.get("slug") || "");
   const signupId = String(formData.get("signupId") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -503,8 +502,7 @@ export async function promoteWaitlist(formData: FormData) {
 export async function toggleCheckIn(formData: FormData) {
   const slug = String(formData.get("slug") || "");
   const signupId = String(formData.get("signupId") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -520,9 +518,8 @@ export async function toggleCheckIn(formData: FormData) {
 
 export async function addCoHost(formData: FormData) {
   const slug = String(formData.get("slug") || "");
-  const editKey = String(formData.get("editKey") || "");
   const query = String(formData.get("email") || "").trim();
-  const found = await findOwned(slug, editKey);
+  const found = await findOwned(slug);
   if ("error" in found) {
     return found;
   }
@@ -562,9 +559,8 @@ export async function addCoHost(formData: FormData) {
 
 export async function removeCoHost(formData: FormData) {
   const slug = String(formData.get("slug") || "");
-  const editKey = String(formData.get("editKey") || "");
   const userId = String(formData.get("userId") || "");
-  const found = await findOwned(slug, editKey);
+  const found = await findOwned(slug);
   if ("error" in found) {
     return found;
   }
@@ -580,8 +576,7 @@ export async function removeCoHost(formData: FormData) {
 
 export async function sendSignupsToBracket(formData: FormData) {
   const slug = String(formData.get("slug") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -603,8 +598,7 @@ export async function sendSignupsToBracket(formData: FormData) {
 
 export async function duplicateEvent(formData: FormData) {
   const slug = String(formData.get("slug") || "");
-  const editKey = String(formData.get("editKey") || "");
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -635,6 +629,7 @@ export async function duplicateEvent(formData: FormData) {
       region: source.region,
       location: source.location,
       description: source.description,
+      links: source.links,
       contact: source.contact,
       status: "published",
       kind: source.kind,
@@ -662,16 +657,19 @@ export async function duplicateEvent(formData: FormData) {
   revalidatePath("/account");
   revalidatePath(`/events/${nextSlug}`);
   revalidateBoard(topic.slug, topic.forumId, nextSlug);
-  return { slug: nextSlug, editKey: nextEditKey, inviteCode };
+  return { slug: nextSlug, inviteCode };
 }
 
 export async function createStandaloneBracket(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) {
+    return { error: "Sign in to hang a bracket." };
+  }
   const title = String(formData.get("title") || "").trim() || "Impromptu bracket";
   const teams = parseTeams(String(formData.get("teams") || ""));
   if (teams.length < 2) {
     return { error: "Add at least two names." };
   }
-  const user = await getSessionUser();
   const id = randomBytes(6).toString("hex");
   const editKey = randomBytes(8).toString("hex");
   const slug = slugify(title);
@@ -687,10 +685,11 @@ export async function createStandaloneBracket(formData: FormData) {
       region: "",
       location: "",
       description: "Standalone bracket — not listed on the calendar.",
-      contact: user?.displayName || "",
+      links: [],
+      contact: user.displayName,
       status: "published",
       kind: "bracket",
-      ownerId: user?.id || "",
+      ownerId: user.id,
       signupMode: "open",
       inviteCode: "",
       signupCap: 0,
@@ -710,11 +709,11 @@ export async function createStandaloneBracket(formData: FormData) {
   });
   revalidatePath("/bracket");
   revalidatePath("/account");
-  return { slug, editKey };
+  return { slug };
 }
 
 export async function moderateEvent(id: string, status: "published" | "rejected") {
-  if (!(await isAdmin())) {
+  if (!(await isInnkeeper())) {
     return;
   }
   await updateStore((data) => {
@@ -729,7 +728,7 @@ export async function moderateEvent(id: string, status: "published" | "rejected"
 }
 
 export async function saveWhiteboard(slug: string, editKey: string, whiteboard: string, teamsText: string) {
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -748,7 +747,7 @@ export async function saveWhiteboard(slug: string, editKey: string, whiteboard: 
 }
 
 export async function setMatchWinner(slug: string, editKey: string, matchId: string, winner: string) {
-  const found = await findManageable(slug, editKey);
+  const found = await findManageable(slug);
   if ("error" in found) {
     return found;
   }
@@ -789,10 +788,11 @@ export async function adminLogin(formData: FormData) {
 
 export async function adminLogout() {
   await logoutAdmin();
+  redirect("/admin");
 }
 
 export async function moderateLadderMatch(matchId: string, decision: "approved" | "denied") {
-  if (!(await isAdmin())) {
+  if (!(await isInnkeeper())) {
     return;
   }
   await updateStore((data) => {
@@ -893,7 +893,7 @@ export async function replyToForumThread(formData: FormData) {
 }
 
 export async function moderateForumThread(slug: string, decision: "locked" | "unlocked" | "hidden" | "shown") {
-  if (!(await isAdmin())) {
+  if (!(await isInnkeeper())) {
     return;
   }
   let forumId = "";
@@ -923,7 +923,7 @@ export async function moderateForumThread(slug: string, decision: "locked" | "un
 }
 
 export async function moderateForumPost(slug: string, postId: string, decision: "hidden" | "shown") {
-  if (!(await isAdmin())) {
+  if (!(await isInnkeeper())) {
     return;
   }
   let forumId = "";

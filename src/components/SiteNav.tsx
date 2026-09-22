@@ -13,10 +13,12 @@ export function SiteNav({
   user,
   inbox,
   rating,
+  innkeeper,
 }: {
   user: PublicUser | null;
   inbox: PlayerInbox;
   rating: { name: string; points: number } | null;
+  innkeeper: boolean;
 }) {
   const [open, setOpen] = useState<MenuId | null>(null);
   const root = useRef<HTMLElement>(null);
@@ -70,7 +72,7 @@ export function SiteNav({
               Book Event
             </Link>
             <Link href="/bracket" onClick={() => setOpen(null)}>
-              Hang a bracket
+              Scratch bracket
             </Link>
           </div>
         ) : null}
@@ -110,6 +112,7 @@ export function SiteNav({
         user={user}
         inbox={inbox}
         rating={rating}
+        innkeeper={innkeeper}
         open={open === "account"}
         onToggle={() => toggle("account")}
         onNavigate={() => setOpen(null)}

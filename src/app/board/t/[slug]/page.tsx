@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ForumReplyForm } from "@/components/ForumReplyForm";
 import { moderateForumPost, moderateForumThread } from "@/lib/actions";
-import { isAdmin } from "@/lib/admin";
+import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
 import { formatBoardTime, forumById, forumPath, topicPath, visibleForumPosts } from "@/lib/forum";
 import { getStore } from "@/lib/store";
@@ -22,7 +22,7 @@ export default async function ForumTopicPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [store, user, innkeeper] = await Promise.all([getStore(), getSessionUser(), isAdmin()]);
+  const [store, user, innkeeper] = await Promise.all([getStore(), getSessionUser(), isInnkeeper()]);
   const thread = store.threads.find((item) => item.slug === slug);
   if (!thread || (thread.hiddenAt && !innkeeper)) {
     notFound();

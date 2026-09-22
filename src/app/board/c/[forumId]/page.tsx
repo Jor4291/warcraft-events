@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { isAdmin } from "@/lib/admin";
+import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
 import {
   formatBoardTime,
@@ -31,7 +31,7 @@ export default async function ForumCategoryPage({
     notFound();
   }
   const forum = forumById(forumId);
-  const [store, user, innkeeper] = await Promise.all([getStore(), getSessionUser(), isAdmin()]);
+  const [store, user, innkeeper] = await Promise.all([getStore(), getSessionUser(), isInnkeeper()]);
   const topics = threadsInForum(store.threads, forum.id, innkeeper);
 
   return (

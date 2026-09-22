@@ -1,8 +1,10 @@
 import { adminLogin } from "@/lib/actions";
-import { isAdmin, isAdminConfigured } from "@/lib/admin";
+import { isAdmin, isAdminConfigured, isInnkeeper } from "@/lib/admin";
 import { InnkeeperDesk, type InnkeeperDeskId } from "@/components/InnkeeperDesk";
+import { getSessionUser } from "@/lib/auth";
 import { awaitingInnkeeper } from "@/lib/rating";
 import { getStore } from "@/lib/store";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Innkeeper" };
@@ -17,8 +19,41 @@ export default async function AdminPage({
   searchParams: Promise<{ desk?: string; error?: string }>;
 }) {
   const { desk: deskParam, error } = await searchParams;
-  const admin = await isAdmin();
+  const [innkeeper, passwordSession, user] = await Promise.all([isInnkeeper(), isAdmin(), getSessionUser()]);
   const configured = isAdminConfigured();
+
+  if (!innkeeper) {
+    return (
+      <main className="mx-auto w-full max-w-md px-6 py-12">
+        <h1 className="tavern-title text-3xl">Innkeeper</h1>
+        <p className="mt-3 text-[var(--muted)]">
+          This desk is locked. Only the innkeeper can confirm duels, hang nights, and moderate the board.
+        </p>
+        {configured ? (
+          <form action={adminLogin} className="tavern-frame mt-8 space-y-4 p-6">
+            <p className="text-sm text-[var(--muted)]">Desk password. This is not your tavern account.</p>
+            {error === "1" ? <p className="text-sm text-[#e07a7a]">That password did not match.</p> : null}
+            <input type="password" name="password" placeholder="Innkeeper password" className="tavern-input" />
+            <button className="tavern-btn" type="submit">
+              Log in
+            </button>
+          </form>
+        ) : null}
+        <p className="mt-6 text-sm text-[var(--muted)]">
+          {user ? (
+            "This tavern account is not the innkeeper."
+          ) : (
+            <>
+              Or{" "}
+              <Link href={`/account/login?next=${encodeURIComponent("/admin")}`}>sign in</Link> with the innkeeper
+              account.
+            </>
+          )}
+        </p>
+      </main>
+    );
+  }
+
   const store = await getStore();
   const pendingEvents = store.events.filter((event) => event.status === "pending").sort(byStart);
   const liveEvents = store.events
@@ -46,31 +81,16 @@ export default async function AdminPage({
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
       <h1 className="tavern-title text-3xl">Innkeeper</h1>
-      {!configured ? (
-        <p className="mt-4 text-[var(--muted)]">
-          Set <code>ADMIN_PASSWORD</code> in <code>.env.local</code> (and in Vercel env) to enable moderation.
-        </p>
-      ) : null}
-      {admin ? (
-        <InnkeeperDesk
-          desk={desk}
-          pendingDuels={pendingDuels}
-          deniedDuels={deniedDuels}
-          pendingEvents={pendingEvents}
-          liveEvents={liveEvents}
-          cancelledEvents={cancelledEvents}
-          rejectedEvents={rejectedEvents}
-        />
-      ) : configured ? (
-        <form action={adminLogin} className="tavern-frame mt-8 max-w-sm space-y-4 p-6">
-          <p className="text-sm text-[var(--muted)]">Password for the desk. This is not your tavern account.</p>
-          {error === "1" ? <p className="text-sm text-[#e07a7a]">That password did not match.</p> : null}
-          <input type="password" name="password" placeholder="Innkeeper password" className="tavern-input" />
-          <button className="tavern-btn" type="submit">
-            Log in
-          </button>
-        </form>
-      ) : null}
+      <InnkeeperDesk
+        desk={desk}
+        passwordSession={passwordSession}
+        pendingDuels={pendingDuels}
+        deniedDuels={deniedDuels}
+        pendingEvents={pendingEvents}
+        liveEvents={liveEvents}
+        cancelledEvents={cancelledEvents}
+        rejectedEvents={rejectedEvents}
+      />
     </main>
   );
 }

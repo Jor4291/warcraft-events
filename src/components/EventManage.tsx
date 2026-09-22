@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   addCoHost,
@@ -14,6 +15,8 @@ import {
 } from "@/lib/actions";
 import { confirmedSignups, rosterExport, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
 import type { EventRecord, EventSignup } from "@/lib/types";
+import { EventCopyEditor } from "./EventCopyEditor";
+import { EventLinksBuilder } from "./EventLinksBuilder";
 import { SignupFormBuilder } from "./SignupFormBuilder";
 
 function toDatetimeLocal(value: string) {
@@ -29,6 +32,7 @@ function toDatetimeLocal(value: string) {
 }
 
 export function EventManage({ event, editKey, isOwner }: { event: EventRecord; editKey: string; isOwner: boolean }) {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -75,10 +79,21 @@ export function EventManage({ event, editKey, isOwner }: { event: EventRecord; e
         <Field label="Ends" name="endsAt" type="datetime-local" defaultValue={toDatetimeLocal(event.endsAt)} />
         <Field label="Location" name="location" defaultValue={event.location} />
         <Field label="Contact" name="contact" defaultValue={event.contact} />
-        <label className="block text-sm md:col-span-2">
+        <div className="block text-sm md:col-span-2">
           Description
-          <textarea name="description" rows={4} defaultValue={event.description} className="tavern-input" />
-        </label>
+          <div className="mt-1">
+            <EventCopyEditor name="description" defaultValue={event.description} rows={6} />
+          </div>
+        </div>
+        <fieldset className="md:col-span-2">
+          <legend className="text-sm text-[var(--muted)]">Links</legend>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Discord for voice comms, a stream, a rules doc — anything attendees should open.
+          </p>
+          <div className="mt-2">
+            <EventLinksBuilder initialLinks={event.links} />
+          </div>
+        </fieldset>
         <fieldset className="md:col-span-2">
           <legend className="text-sm text-[var(--muted)]">Who can sign up</legend>
           <div className="mt-2 flex flex-wrap gap-4 text-sm">
@@ -295,7 +310,7 @@ export function EventManage({ event, editKey, isOwner }: { event: EventRecord; e
               return;
             }
             if (result && "slug" in result && result.slug) {
-              window.location.href = `/events/${result.slug}?key=${result.editKey}`;
+              router.push(`/events/${result.slug}`);
             }
           }}
         >

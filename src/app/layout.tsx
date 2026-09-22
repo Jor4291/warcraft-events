@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import { SiteNav } from "@/components/SiteNav";
+import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
 import { emptyInbox, playerInbox } from "@/lib/notices";
 import { namesEqual } from "@/lib/player-name";
@@ -41,7 +42,7 @@ async function loadNav(userId: string, displayName: string) {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const user = await getSessionUser();
+  const [user, innkeeper] = await Promise.all([getSessionUser(), isInnkeeper()]);
   const nav = user ? await loadNav(user.id, user.displayName) : { inbox: emptyInbox(), rating: null };
 
   return (
@@ -55,7 +56,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               <span className="tavern-title block text-2xl">WarcraftEvents</span>
             </Link>
-            <SiteNav user={user} inbox={nav.inbox} rating={nav.rating} />
+            <SiteNav user={user} inbox={nav.inbox} rating={nav.rating} innkeeper={innkeeper} />
           </div>
         </header>
         <div className="tavern-main flex-1">{children}</div>
@@ -63,8 +64,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           WarcraftEvents.com · a notice board for Azeroth and WoW:Forever
           <span className="mx-2">·</span>
           <Link href="/board">Forums</Link>
-          <span className="mx-2">·</span>
-          <Link href="/admin">Innkeeper</Link>
+          {innkeeper ? (
+            <>
+              <span className="mx-2">·</span>
+              <Link href="/admin">Innkeeper</Link>
+            </>
+          ) : null}
           <span className="mx-2">·</span>
           <Link href="/ladder/setup">How to send duels</Link>
           <span className="mx-2">·</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { rsvpEvent } from "@/lib/actions";
 import type { SignupField, SignupMode } from "@/lib/types";
 
@@ -24,11 +24,15 @@ export function SignupPanel({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const joiningWaitlist = isFull && waitlistEnabled;
+  const roster = `${spotsLabel}|${isFull}|${waitlistEnabled}`;
+  const [shownRoster, setShownRoster] = useState(roster);
 
-  useEffect(() => {
+  // The roster moved under us, so anything said about the old one no longer applies.
+  if (shownRoster !== roster) {
+    setShownRoster(roster);
     setError("");
     setMessage("");
-  }, [spotsLabel, isFull, waitlistEnabled]);
+  }
 
   if (isFull && !waitlistEnabled) {
     return (

@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { submitEvent } from "@/lib/actions";
+import { EventCopyEditor } from "./EventCopyEditor";
+import { EventLinksBuilder } from "./EventLinksBuilder";
 import { SignupFormBuilder } from "./SignupFormBuilder";
 
 export function BookEventForm() {
   const [result, setResult] = useState<{
     slug: string;
-    editKey: string;
     inviteCode: string;
     signupMode: string;
   } | null>(null);
@@ -54,10 +55,21 @@ export function BookEventForm() {
       <Field label="Region" name="region" placeholder="NA / EU / All" />
       <Field label="Location" name="location" placeholder="Discord, in-game, etc." />
       <Field label="Contact" name="contact" />
-      <label className="block text-sm">
+      <div className="block text-sm">
         Description
-        <textarea name="description" rows={5} className="tavern-input" />
-      </label>
+        <div className="mt-1">
+          <EventCopyEditor name="description" />
+        </div>
+      </div>
+      <fieldset>
+        <legend className="text-sm text-[var(--muted)]">Links</legend>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Discord for voice comms, a stream, a rules doc — anything attendees should open.
+        </p>
+        <div className="mt-2">
+          <EventLinksBuilder />
+        </div>
+      </fieldset>
       <fieldset>
         <legend className="text-sm text-[var(--muted)]">Who can sign up</legend>
         <div className="mt-2 space-y-2 text-sm">

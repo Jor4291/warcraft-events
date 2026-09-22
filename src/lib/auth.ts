@@ -27,11 +27,13 @@ function tokenFor(userId: string) {
 }
 
 function publicUser(user: UserRecord): PublicUser {
+  const isHub = Boolean(user.isHub);
   return {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
-    isHub: Boolean(user.isHub),
+    isHub,
+    isInnkeeper: isHubAccount(user.displayName, isHub),
     hasUploadToken: Boolean(user.uploadTokenHash),
   };
 }

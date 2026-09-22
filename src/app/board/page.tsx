@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isAdmin } from "@/lib/admin";
+import { isInnkeeper } from "@/lib/admin";
 import { formatBoardTime, FORUMS, forumPath, forumSummary, topicPath } from "@/lib/forum";
 import { getStore } from "@/lib/store";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Forums" };
 
 export default async function BoardPage() {
-  const [store, innkeeper] = await Promise.all([getStore(), isAdmin()]);
+  const [store, innkeeper] = await Promise.all([getStore(), isInnkeeper()]);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">

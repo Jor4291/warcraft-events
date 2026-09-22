@@ -64,7 +64,7 @@ export default async function AccountPage() {
         {mine.length === 0 ? (
           <p className="mt-3 text-sm text-[var(--muted)]">
             Nothing booked yet. <Link href="/events/submit">Book an event</Link> or{" "}
-            <Link href="/bracket">hang a pickup bracket</Link>.
+            <Link href="/bracket">hang a lasting pickup bracket</Link>.
           </p>
         ) : (
           <ul className="mt-4 space-y-3">

@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { BracketBoard } from "@/components/BracketBoard";
+import { EventCopy } from "@/components/EventCopy";
+import { EventLinks } from "@/components/EventLinks";
 import { EventManage } from "@/components/EventManage";
 import { PlayerSignupStatus } from "@/components/PlayerSignupStatus";
 import { SignupPanel } from "@/components/SignupPanel";
 import { StartDiscussionButton } from "@/components/StartDiscussionButton";
 import { getSessionUser } from "@/lib/auth";
-import { canManageEvent, isEventOwner } from "@/lib/event-access";
+import { canManageEvent, eventForHostClient, isEventOwner } from "@/lib/event-access";
 import { replyCount, threadForEvent, topicPath } from "@/lib/forum";
 import { signupForUser, waitlistPlace } from "@/lib/notices";
 import { confirmedSignups, eventIsFull, signupSpotsLabel } from "@/lib/signup-form";
@@ -14,21 +16,18 @@ import Link from "next/link";
 
 export default async function EventPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ key?: string }>;
 }) {
   const { slug } = await params;
-  const { key = "" } = await searchParams;
   const store = await getStore();
   const event = store.events.find((item) => item.slug === slug && item.kind === "calendar");
   if (!event) {
     notFound();
   }
   const user = await getSessionUser();
-  const canEdit = await canManageEvent(event, key);
-  const isOwner = await isEventOwner(event, key);
+  const canEdit = await canManageEvent(event);
+  const isOwner = await isEventOwner(event);
   const canView = event.status === "published" || canEdit;
   if (!canView) {
     notFound();
@@ -49,7 +48,8 @@ export default async function EventPage({
           {event.signupCap > 0 || roster.length > 0 ? ` · ${spots}` : ""}
         </p>
         <h1 className="tavern-title mt-2 text-4xl">{event.title}</h1>
-        <p className="mt-3 max-w-3xl text-[var(--muted)]">{event.description}</p>
+        <EventCopy source={event.description} className="mt-3 max-w-3xl" />
+        <EventLinks links={event.links} className="mt-4" />
         <p className="mt-2 text-sm text-[var(--muted)]">
           {event.format} · {event.location} · {event.startsAt ? new Date(event.startsAt).toLocaleString() : "TBA"}
         </p>
@@ -115,12 +115,12 @@ export default async function EventPage({
         </section>
       ) : null}
 
-      {canEdit ? <EventManage event={event} editKey={key || event.editKey} isOwner={isOwner} /> : null}
+      {canEdit ? <EventManage event={eventForHostClient(event)} editKey="" isOwner={isOwner} /> : null}
 
       <div>
         <BracketBoard
           slug={event.slug}
-          editKey={canEdit ? key || event.editKey : ""}
+          editKey=""
           canEdit={canEdit}
           whiteboard={event.whiteboard}
           teams={event.teams}

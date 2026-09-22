@@ -1,3 +1,4 @@
+import { plainEventCopy } from "./event-copy";
 import type { ForumPost, ForumThread } from "./types";
 
 export const FORUM_TITLE_MAX = 100;
@@ -119,7 +120,7 @@ export function threadForEvent(threads: ForumThread[], event: { slug: string; th
 }
 
 export function eventDiscussionBody(title: string, description: string) {
-  const details = description.trim();
+  const details = plainEventCopy(description).trim();
   return [
     `This topic is for ${title}. Sign up and see the roster on the event page.`,
     details ? `\n${details}` : "",

@@ -4,6 +4,7 @@ import { emptyStore, withoutPlaceholderEvents } from "./seed";
 import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
+import { normalizeEventLinks } from "./event-links";
 import { normalizeForumThread } from "./forum";
 import type { EventRecord, PlayerNotice, StoreData, UserRecord } from "./types";
 import { normalizeCoHosts, normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";
@@ -27,6 +28,7 @@ function normalizeEvent(event: EventRecord): EventRecord {
     inviteCode: event.inviteCode ?? "",
     signupCap: parseSignupCap(event.signupCap),
     signupFields: normalizeSignupFields(event.signupFields),
+    links: normalizeEventLinks(event.links),
     waitlistEnabled: event.waitlistEnabled !== false,
     rosterPublic: event.rosterPublic !== false,
     coHosts: normalizeCoHosts(event.coHosts),

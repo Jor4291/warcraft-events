@@ -1,35 +1,59 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { getSessionUser, isHubAccount } from "./auth";
 
 const COOKIE = "we_admin";
 
-function secret() {
+function password() {
   return process.env.ADMIN_PASSWORD || "";
 }
 
-function tokenFor(password: string) {
-  return createHmac("sha256", "warcraft-events-admin").update(password).digest("hex");
+function hmacSecret() {
+  return process.env.AUTH_SECRET || process.env.ADMIN_PASSWORD || "warcraft-events-dev";
+}
+
+function tokenFor(value: string) {
+  return createHmac("sha256", hmacSecret()).update(value).digest("hex");
+}
+
+function tokensMatch(left: string, right: string) {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export function isAdminConfigured() {
-  return secret().length > 0;
+  return password().length > 0;
 }
 
 export async function isAdmin() {
-  const password = secret();
-  if (!password) {
+  const expected = password();
+  if (!expected) {
     return false;
   }
   const jar = await cookies();
-  return jar.get(COOKIE)?.value === tokenFor(password);
+  const got = jar.get(COOKIE)?.value || "";
+  if (!got) {
+    return false;
+  }
+  return tokensMatch(got, tokenFor(expected));
 }
 
-export async function loginAdmin(password: string) {
-  if (!secret() || password !== secret()) {
+export async function isInnkeeper() {
+  if (await isAdmin()) {
+    return true;
+  }
+  const user = await getSessionUser();
+  return Boolean(user && isHubAccount(user.displayName, user.isHub));
+}
+
+export async function loginAdmin(candidate: string) {
+  const expected = password();
+  if (!expected || !tokensMatch(tokenFor(candidate), tokenFor(expected))) {
     return false;
   }
   const jar = await cookies();
-  jar.set(COOKIE, tokenFor(password), {
+  jar.set(COOKIE, tokenFor(expected), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
