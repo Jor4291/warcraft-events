@@ -14,6 +14,41 @@ import { confirmedSignups, eventIsFull, signupSpotsLabel } from "@/lib/signup-fo
 import { getStore } from "@/lib/store";
 import Link from "next/link";
 
+function formatEventStart(iso: string) {
+  if (!iso) {
+    return "Time to be announced";
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  return date.toLocaleString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatEventEnd(startIso: string, endIso: string) {
+  if (!startIso || !endIso) {
+    return "";
+  }
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return "";
+  }
+  const sameDay = start.toDateString() === end.toDateString();
+  return end.toLocaleString(
+    undefined,
+    sameDay
+      ? { hour: "numeric", minute: "2-digit" }
+      : { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+  );
+}
+
 export default async function EventPage({
   params,
 }: {
@@ -38,6 +73,7 @@ export default async function EventPage({
   const mySignup = user ? signupForUser(event, user.id) : undefined;
   const discussion = threadForEvent(store.threads, event);
   const discussionReplies = discussion ? replyCount(discussion) : 0;
+  const endsAt = formatEventEnd(event.startsAt, event.endsAt);
 
   return (
     <main className="mx-auto w-full max-w-[100rem] space-y-8 px-4 py-12 md:px-8">
@@ -48,11 +84,15 @@ export default async function EventPage({
           {event.signupCap > 0 || roster.length > 0 ? ` · ${spots}` : ""}
         </p>
         <h1 className="tavern-title mt-2 text-4xl">{event.title}</h1>
-        <EventCopy source={event.description} className="mt-3 max-w-3xl" />
-        <EventLinks links={event.links} className="mt-4" />
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          {event.format} · {event.location} · {event.startsAt ? new Date(event.startsAt).toLocaleString() : "TBA"}
+        <p className="mt-3 text-xl text-[var(--gold-bright)] md:text-2xl">
+          {formatEventStart(event.startsAt)}
+          {endsAt ? <span className="text-[var(--gold)]"> to {endsAt}</span> : null}
         </p>
+        {event.format || event.location ? (
+          <p className="mt-1 text-lg text-[var(--gold)]">{[event.format, event.location].filter(Boolean).join(" · ")}</p>
+        ) : null}
+        <EventCopy source={event.description} className="mt-4 max-w-3xl" />
+        <EventLinks links={event.links} className="mt-4" />
       </div>
 
       {event.cancelledAt ? (
