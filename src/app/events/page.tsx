@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EventExplorer } from "@/components/EventExplorer";
 import { stripEventCopy } from "@/lib/event-copy";
+import { compareByNextStart } from "@/lib/event-when";
 import { confirmedSignups, waitlistedSignups } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
@@ -10,7 +11,7 @@ export default async function EventsPage() {
   const store = await getStore();
   const events = store.events
     .filter((event) => event.status === "published" && event.kind === "calendar" && !event.cancelledAt)
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .sort(compareByNextStart)
     .map((event) => ({
       slug: event.slug,
       title: event.title,

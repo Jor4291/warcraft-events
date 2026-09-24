@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
+import { compareByNextStart } from "@/lib/event-when";
 import { formatSignupSpots } from "@/lib/signup-form";
 
 export type CalendarEvent = {
@@ -52,6 +53,8 @@ export function EventExplorer({ events }: { events: CalendarEvent[] }) {
   const [view, setView] = useState<View>("month");
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
+  const ordered = useMemo(() => [...events].sort(compareByNextStart), [events]);
+
   const cells = useMemo(() => {
     const first = new Date(cursor.year, cursor.month, 1);
     const start = first.getDay();
@@ -63,14 +66,14 @@ export function EventExplorer({ events }: { events: CalendarEvent[] }) {
     for (let day = 1; day <= daysInMonth; day += 1) {
       slots.push({
         day,
-        events: events.filter((event) => sameDay(event.startsAt, cursor.year, cursor.month, day)),
+        events: ordered.filter((event) => sameDay(event.startsAt, cursor.year, cursor.month, day)),
       });
     }
     while (slots.length % 7 !== 0) {
       slots.push({ day: null, events: [] });
     }
     return slots;
-  }, [cursor.month, cursor.year, events]);
+  }, [cursor.month, cursor.year, ordered]);
 
   return (
     <div>
@@ -118,8 +121,8 @@ export function EventExplorer({ events }: { events: CalendarEvent[] }) {
       </div>
 
       {view === "month" ? <MonthView cells={cells} /> : null}
-      {view === "list" ? <ListView events={events} /> : null}
-      {view === "grid" ? <GridView events={events} /> : null}
+      {view === "list" ? <ListView events={ordered} /> : null}
+      {view === "grid" ? <GridView events={ordered} /> : null}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LadderPreview } from "@/components/LadderPreview";
+import { compareByNextStart, isUpcomingStart } from "@/lib/event-when";
 import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 
@@ -21,6 +22,8 @@ export default async function HomePage() {
   const store = await getStore();
   const upcoming = store.events
     .filter((event) => event.status === "published" && event.kind === "calendar" && !event.cancelledAt)
+    .filter((event) => isUpcomingStart(event.startsAt))
+    .sort(compareByNextStart)
     .slice(0, 4);
   const confirmedMatches = store.matches.filter((match) => match.confirmed).length;
 
