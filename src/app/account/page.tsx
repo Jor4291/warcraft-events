@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { UploaderTokenPanel } from "@/components/UploaderTokenPanel";
 import { logoutAccount } from "@/lib/actions";
 import { getSessionUser } from "@/lib/auth";
+import { describeRestriction, restrictionMessage } from "@/lib/moderation";
 import { nightsForUser } from "@/lib/notices";
 import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
@@ -34,6 +35,12 @@ export default async function AccountPage() {
         </form>
       </div>
       <div className="space-y-6">
+      {user.restriction ? (
+        <section className="tavern-frame border-l-2 border-[#e07a7a] p-5">
+          <h2 className="tavern-title text-xl">{describeRestriction(user.restriction)}</h2>
+          <p className="mt-2 text-[var(--muted)]">{restrictionMessage(user.restriction)}</p>
+        </section>
+      ) : null}
       <UploaderTokenPanel
         displayName={user.displayName}
         hasToken={user.hasUploadToken}

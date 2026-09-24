@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { InnkeeperPeople, type DeskPerson } from "@/components/InnkeeperPeople";
 import { adminLogout, moderateEvent, moderateLadderMatch } from "@/lib/actions";
 import { classColor, formatClassName } from "@/lib/display";
 import { stripEventCopy } from "@/lib/event-copy";
 import { confirmedSignups, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
 import type { EventRecord, LadderMatch } from "@/lib/types";
 
-export type InnkeeperDeskId = "arena" | "events";
+export type InnkeeperDeskId = "arena" | "events" | "people";
 
 function formatEventWhen(iso: string) {
   if (!iso) {
@@ -56,6 +57,8 @@ export function InnkeeperDesk({
   liveEvents,
   cancelledEvents,
   rejectedEvents,
+  people,
+  focusPersonId,
 }: {
   desk: InnkeeperDeskId;
   passwordSession: boolean;
@@ -65,14 +68,18 @@ export function InnkeeperDesk({
   liveEvents: EventRecord[];
   cancelledEvents: EventRecord[];
   rejectedEvents: EventRecord[];
+  people: DeskPerson[];
+  focusPersonId: string;
 }) {
+  const restrictedCount = people.filter((person) => person.restriction).length;
   return (
     <div className="mt-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-[0.28em] text-[var(--gold)]">The desk</p>
           <p className="mt-2 max-w-2xl text-[var(--muted)]">
-            Confirm single duel reports for the official ladder, or hang nights on the calendar.
+            Confirm single duel reports for the official ladder, hang nights on the calendar, or deal with anyone
+            causing trouble.
           </p>
         </div>
         {passwordSession ? (
@@ -92,6 +99,9 @@ export function InnkeeperDesk({
         </DeskTab>
         <DeskTab href="/admin?desk=events" active={desk === "events"} count={pendingEvents.length}>
           Events
+        </DeskTab>
+        <DeskTab href="/admin?desk=people" active={desk === "people"} count={restrictedCount}>
+          People
         </DeskTab>
       </div>
 
@@ -130,6 +140,8 @@ export function InnkeeperDesk({
             )}
           </section>
         </div>
+      ) : desk === "people" ? (
+        <InnkeeperPeople people={people} focusId={focusPersonId} />
       ) : (
         <div className="space-y-10">
           <section>

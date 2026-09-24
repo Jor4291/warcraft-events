@@ -90,6 +90,24 @@ export type PlayerNotice = {
   readAt: string;
 };
 
+export type SanctionKind = "mute" | "timeout" | "ban";
+
+export type UserSanction = {
+  id: string;
+  kind: SanctionKind;
+  reason: string;
+  by: string;
+  createdAt: string;
+  expiresAt: string;
+  liftedAt: string;
+};
+
+export type UserRestriction = {
+  kind: SanctionKind;
+  reason: string;
+  expiresAt: string;
+};
+
 export type UserRecord = {
   id: string;
   email: string;
@@ -100,6 +118,7 @@ export type UserRecord = {
   isHub: boolean;
   notifications: PlayerNotice[];
   seenSoonIds: string[];
+  sanctions: UserSanction[];
   createdAt: string;
 };
 
@@ -110,6 +129,7 @@ export type PublicUser = {
   isHub: boolean;
   isInnkeeper: boolean;
   hasUploadToken: boolean;
+  restriction: UserRestriction | null;
 };
 
 export type MatchReport = {

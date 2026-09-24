@@ -5,6 +5,7 @@ import { moderateForumPost, moderateForumThread } from "@/lib/actions";
 import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
 import { formatBoardTime, forumById, forumPath, topicPath, visibleForumPosts } from "@/lib/forum";
+import { boardBlock } from "@/lib/moderation";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function ForumTopicPage({
   if (!thread || (thread.hiddenAt && !innkeeper)) {
     notFound();
   }
+  const barred = user ? boardBlock(user) : "";
   const forum = forumById(thread.forumId);
   const posts = visibleForumPosts(thread, innkeeper);
   const linkedEvent = thread.eventSlug
@@ -80,11 +82,18 @@ export default async function ForumTopicPage({
             <div className="forum-post-body">
               <p className={`whitespace-pre-wrap ${post.hiddenAt ? "text-[var(--muted)]" : ""}`}>{post.body}</p>
               {innkeeper ? (
-                <form action={moderateForumPost.bind(null, thread.slug, post.id, post.hiddenAt ? "shown" : "hidden")} className="mt-4">
-                  <button className="text-sm text-[var(--muted)]" type="submit">
-                    {post.hiddenAt ? "Show post" : "Hide post"}
-                  </button>
-                </form>
+                <div className="mt-4 flex flex-wrap items-center gap-4">
+                  <form action={moderateForumPost.bind(null, thread.slug, post.id, post.hiddenAt ? "shown" : "hidden")}>
+                    <button className="text-sm text-[var(--muted)]" type="submit">
+                      {post.hiddenAt ? "Show post" : "Hide post"}
+                    </button>
+                  </form>
+                  {post.authorId ? (
+                    <Link href={`/admin?desk=people&user=${post.authorId}`} className="text-sm text-[var(--muted)]">
+                      Deal with {post.authorName}
+                    </Link>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </li>
@@ -93,6 +102,8 @@ export default async function ForumTopicPage({
       <section className="mt-10">
         {thread.lockedAt ? (
           <p className="text-[var(--muted)]">This topic is locked.</p>
+        ) : user && barred ? (
+          <p className="tavern-frame p-4 text-[var(--muted)]">{barred}</p>
         ) : user ? (
           <ForumReplyForm slug={thread.slug} />
         ) : (

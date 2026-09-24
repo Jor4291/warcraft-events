@@ -47,6 +47,10 @@ async function ensureSchema() {
           ADD COLUMN IF NOT EXISTS seen_soon_ids jsonb NOT NULL DEFAULT '[]'::jsonb
       `);
       await create(sql`
+        ALTER TABLE users
+          ADD COLUMN IF NOT EXISTS sanctions jsonb NOT NULL DEFAULT '[]'::jsonb
+      `);
+      await create(sql`
         CREATE TABLE IF NOT EXISTS events (
           id text PRIMARY KEY,
           slug text NOT NULL UNIQUE,
@@ -110,6 +114,7 @@ function asUser(row: Record<string, unknown>): UserRecord {
     isHub: Boolean(row.is_hub),
     notifications: jsonArray(row.notices) as UserRecord["notifications"],
     seenSoonIds: jsonArray(row.seen_soon_ids).map((id) => String(id)),
+    sanctions: jsonArray(row.sanctions) as UserRecord["sanctions"],
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -118,7 +123,7 @@ export async function readPostgres(): Promise<StoreData> {
   await ensureSchema();
   const sql = getSql();
   const [users, events, matches, players, threads] = await Promise.all([
-    sql`SELECT id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, created_at FROM users ORDER BY created_at DESC`,
+    sql`SELECT id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, sanctions, created_at FROM users ORDER BY created_at DESC`,
     sql`SELECT data FROM events`,
     sql`SELECT data FROM matches ORDER BY timestamp ASC`,
     sql`SELECT data FROM players ORDER BY points DESC`,
@@ -171,8 +176,8 @@ export async function writePostgres(data: StoreData) {
   const queries = [
     ...data.users.map(
       (user) =>
-        sql`INSERT INTO users (id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, created_at)
-            VALUES (${user.id}, ${user.email}, ${user.displayName}, ${user.passwordHash}, ${user.passwordSalt}, ${user.uploadTokenHash}, ${user.isHub}, CAST(${jsonText(user.notifications)} AS jsonb), CAST(${jsonText(user.seenSoonIds)} AS jsonb), ${user.createdAt})
+        sql`INSERT INTO users (id, email, display_name, password_hash, password_salt, upload_token_hash, is_hub, notices, seen_soon_ids, sanctions, created_at)
+            VALUES (${user.id}, ${user.email}, ${user.displayName}, ${user.passwordHash}, ${user.passwordSalt}, ${user.uploadTokenHash}, ${user.isHub}, CAST(${jsonText(user.notifications)} AS jsonb), CAST(${jsonText(user.seenSoonIds)} AS jsonb), CAST(${jsonText(user.sanctions)} AS jsonb), ${user.createdAt})
             ON CONFLICT (id) DO UPDATE SET
               email = EXCLUDED.email,
               display_name = EXCLUDED.display_name,
@@ -182,6 +187,7 @@ export async function writePostgres(data: StoreData) {
               is_hub = EXCLUDED.is_hub,
               notices = EXCLUDED.notices,
               seen_soon_ids = EXCLUDED.seen_soon_ids,
+              sanctions = EXCLUDED.sanctions,
               created_at = EXCLUDED.created_at`,
     ),
     ...data.events.map(

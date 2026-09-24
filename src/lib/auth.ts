@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { restrictionMessage, restrictionOf } from "./moderation";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { PublicUser, UserRecord } from "./types";
@@ -35,6 +36,7 @@ function publicUser(user: UserRecord): PublicUser {
     isHub,
     isInnkeeper: isHubAccount(user.displayName, isHub),
     hasUploadToken: Boolean(user.uploadTokenHash),
+    restriction: restrictionOf(user.sanctions),
   };
 }
 
@@ -95,6 +97,7 @@ export async function registerUser(email: string, password: string, displayName:
         isHub: false,
         notifications: [],
         seenSoonIds: [],
+        sanctions: [],
         createdAt: new Date().toISOString(),
       });
     });
@@ -115,6 +118,10 @@ export async function loginUser(email: string, password: string) {
   const user = store.users.find((item) => item.email === normalized);
   if (!user || !verifyPassword(password, user.passwordHash, user.passwordSalt)) {
     return { error: "Email or password is incorrect." };
+  }
+  const restriction = restrictionOf(user.sanctions);
+  if (restriction && restriction.kind === "ban") {
+    return { error: restrictionMessage(restriction) };
   }
   await setSession(user.id);
   return { ok: true as const };

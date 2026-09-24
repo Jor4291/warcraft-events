@@ -4,13 +4,23 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isInnkeeper, loginAdmin, logoutAdmin } from "./admin";
-import { getSessionUser, hashUploadToken, hubNameList, loginUser, logoutUser, registerUser } from "./auth";
+import { getSessionUser, hashUploadToken, hubNameList, isHubAccount, loginUser, logoutUser, registerUser } from "./auth";
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
 import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
+import {
+  banBlock,
+  boardBlock,
+  hostBlock,
+  isSanctionKind,
+  normalizeSanctions,
+  sanctionExpiry,
+  sanctionInForce,
+  SANCTION_REASON_MAX,
+} from "./moderation";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { EventRecord, ForumThread, SignupMode } from "./types";
@@ -93,10 +103,15 @@ async function findManageable(slug: string) {
   const store = await getStore();
   const event = store.events.find((item) => item.slug === slug);
   if (!event) {
-    return { error: "Event not found." as const };
+    return { error: "Event not found." };
   }
   if (!(await canManageEvent(event))) {
-    return { error: "You cannot edit this board." as const };
+    return { error: "You cannot edit this board." };
+  }
+  const user = await getSessionUser();
+  const barred = user ? banBlock(user) : "";
+  if (barred) {
+    return { error: barred };
   }
   return { event };
 }
@@ -191,6 +206,10 @@ export async function submitEvent(formData: FormData) {
   const user = await getSessionUser();
   if (!user) {
     return { error: "Sign in to book an event." };
+  }
+  const barred = hostBlock(user);
+  if (barred) {
+    return { error: barred };
   }
   const title = String(formData.get("title") || "").trim();
   if (!title) {
@@ -320,6 +339,10 @@ export async function rsvpEvent(formData: FormData) {
     return { error: "A character or player name is required." };
   }
   const user = await getSessionUser();
+  const barred = user ? banBlock(user) : "";
+  if (barred) {
+    return { error: barred };
+  }
   const store = await getStore();
   const event = store.events.find((item) => item.slug === slug);
   if (!event || event.status !== "published" || event.kind !== "calendar") {
@@ -604,6 +627,10 @@ export async function duplicateEvent(formData: FormData) {
   }
   const source = found.event;
   const user = await getSessionUser();
+  const barred = user ? hostBlock(user) : "";
+  if (barred) {
+    return { error: barred };
+  }
   const id = randomBytes(6).toString("hex");
   const nextEditKey = randomBytes(8).toString("hex");
   const inviteCode = randomBytes(4).toString("hex").toUpperCase();
@@ -664,6 +691,10 @@ export async function createStandaloneBracket(formData: FormData) {
   const user = await getSessionUser();
   if (!user) {
     return { error: "Sign in to hang a bracket." };
+  }
+  const barred = hostBlock(user);
+  if (barred) {
+    return { error: barred };
   }
   const title = String(formData.get("title") || "").trim() || "Impromptu bracket";
   const teams = parseTeams(String(formData.get("teams") || ""));
@@ -825,6 +856,10 @@ export async function createForumThread(formData: FormData) {
   if (!user) {
     return { error: "Sign in to start a topic." };
   }
+  const barred = boardBlock(user);
+  if (barred) {
+    return { error: barred };
+  }
   const title = clipForumTitle(String(formData.get("title") || ""));
   const body = clipForumBody(String(formData.get("body") || ""));
   const forumId = String(formData.get("forumId") || "general");
@@ -855,6 +890,10 @@ export async function replyToForumThread(formData: FormData) {
   const user = await getSessionUser();
   if (!user) {
     return { error: "Sign in to reply." };
+  }
+  const barred = boardBlock(user);
+  if (barred) {
+    return { error: barred };
   }
   const slug = String(formData.get("slug") || "");
   const body = clipForumBody(String(formData.get("body") || ""));
@@ -941,10 +980,89 @@ export async function moderateForumPost(slug: string, postId: string, decision: 
   revalidateBoard(slug, forumId, eventSlug);
 }
 
+export async function sanctionUser(formData: FormData) {
+  if (!(await isInnkeeper())) {
+    return { error: "Only the innkeeper can do that." };
+  }
+  const userId = String(formData.get("userId") || "");
+  const kind = String(formData.get("kind") || "");
+  if (!isSanctionKind(kind)) {
+    return { error: "Pick a mute, a timeout, or a ban." };
+  }
+  const reason = String(formData.get("reason") || "").trim().slice(0, SANCTION_REASON_MAX);
+  const expiresAt = sanctionExpiry(kind === "ban" ? "open" : String(formData.get("length") || "open"));
+  const purge = checkboxOn(formData, "purgePosts");
+  const by = (await getSessionUser())?.displayName || "The innkeeper";
+  const now = new Date().toISOString();
+  let error = "";
+  let hidden = 0;
+  await updateStore((data) => {
+    const target = data.users.find((item) => item.id === userId);
+    if (!target) {
+      error = "That account is gone.";
+      return;
+    }
+    if (isHubAccount(target.displayName, target.isHub)) {
+      error = "Innkeeper accounts cannot be restricted.";
+      return;
+    }
+    target.sanctions = [
+      { id: randomBytes(6).toString("hex"), kind, reason, by, createdAt: now, expiresAt, liftedAt: "" },
+      ...normalizeSanctions(target.sanctions).map((sanction) =>
+        sanctionInForce(sanction) ? { ...sanction, liftedAt: now } : sanction,
+      ),
+    ];
+    if (!purge) {
+      return;
+    }
+    for (const thread of data.threads) {
+      if (thread.authorId === userId && !thread.hiddenAt) {
+        thread.hiddenAt = now;
+      }
+      for (const post of thread.posts) {
+        if (post.authorId === userId && !post.hiddenAt) {
+          post.hiddenAt = now;
+          hidden += 1;
+        }
+      }
+    }
+  });
+  if (error) {
+    return { error };
+  }
+  revalidatePath("/admin");
+  revalidatePath("/account");
+  revalidateBoard();
+  return { ok: true as const, hidden };
+}
+
+export async function liftSanction(userId: string) {
+  if (!(await isInnkeeper())) {
+    return;
+  }
+  const now = new Date().toISOString();
+  await updateStore((data) => {
+    const target = data.users.find((item) => item.id === userId);
+    if (!target) {
+      return;
+    }
+    target.sanctions = normalizeSanctions(target.sanctions).map((sanction) =>
+      sanctionInForce(sanction) ? { ...sanction, liftedAt: now } : sanction,
+    );
+  });
+  revalidatePath("/admin");
+  revalidatePath("/account");
+  revalidateBoard();
+}
+
 export async function openEventDiscussion(formData: FormData) {
   const user = await getSessionUser();
   if (!user) {
     return { error: "Sign in to start a discussion." };
+  }
+  const barred = boardBlock(user);
+  if (barred) {
+    return { error: barred };
   }
   const slug = String(formData.get("slug") || "");
   const store = await getStore();

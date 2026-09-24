@@ -6,6 +6,7 @@ import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
 import { normalizeEventLinks } from "./event-links";
 import { normalizeForumThread } from "./forum";
+import { normalizeSanctions } from "./moderation";
 import type { EventRecord, PlayerNotice, StoreData, UserRecord } from "./types";
 import { normalizeCoHosts, normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";
 import { normalizeNotice, normalizeSeenSoonIds } from "./notices";
@@ -48,6 +49,7 @@ function normalizeUser(user: UserRecord): UserRecord {
     isHub: Boolean(user.isHub),
     notifications: (user.notifications ?? []).map(normalizeNotice).filter((notice): notice is PlayerNotice => Boolean(notice)),
     seenSoonIds: normalizeSeenSoonIds(user.seenSoonIds),
+    sanctions: normalizeSanctions(user.sanctions),
   };
 }
 

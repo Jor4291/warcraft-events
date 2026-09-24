@@ -1,7 +1,9 @@
 import { adminLogin } from "@/lib/actions";
 import { isAdmin, isAdminConfigured, isInnkeeper } from "@/lib/admin";
 import { InnkeeperDesk, type InnkeeperDeskId } from "@/components/InnkeeperDesk";
-import { getSessionUser } from "@/lib/auth";
+import type { DeskPerson } from "@/components/InnkeeperPeople";
+import { getSessionUser, isHubAccount } from "@/lib/auth";
+import { activeSanction, normalizeSanctions } from "@/lib/moderation";
 import { awaitingInnkeeper } from "@/lib/rating";
 import { getStore } from "@/lib/store";
 import Link from "next/link";
@@ -16,9 +18,9 @@ function byStart(a: { startsAt: string }, b: { startsAt: string }) {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ desk?: string; error?: string }>;
+  searchParams: Promise<{ desk?: string; error?: string; user?: string }>;
 }) {
-  const { desk: deskParam, error } = await searchParams;
+  const { desk: deskParam, error, user: focusPersonId = "" } = await searchParams;
   const [innkeeper, passwordSession, user] = await Promise.all([isInnkeeper(), isAdmin(), getSessionUser()]);
   const configured = isAdminConfigured();
 
@@ -71,9 +73,35 @@ export default async function AdminPage({
     .sort((a, b) => (b.deniedAt || "").localeCompare(a.deniedAt || ""))
     .slice(0, 20);
 
+  const people: DeskPerson[] = store.users
+    .map((account) => {
+      const posts = store.threads.flatMap((thread) =>
+        thread.posts.filter((post) => post.authorId === account.id),
+      );
+      const sanctions = normalizeSanctions(account.sanctions);
+      const restriction = activeSanction(sanctions);
+      return {
+        id: account.id,
+        displayName: account.displayName,
+        email: account.email,
+        createdAt: account.createdAt,
+        innkeeper: isHubAccount(account.displayName, account.isHub),
+        restriction,
+        history: sanctions.filter((sanction) => sanction.id !== restriction?.id),
+        topics: store.threads.filter((thread) => thread.authorId === account.id).length,
+        posts: posts.length,
+        hiddenPosts: posts.filter((post) => post.hiddenAt).length,
+        events: store.events.filter((event) => event.ownerId === account.id).length,
+        lastPostAt: posts.reduce((latest, post) => (post.createdAt > latest ? post.createdAt : latest), ""),
+      };
+    })
+    .sort((a, b) => (b.lastPostAt || b.createdAt).localeCompare(a.lastPostAt || a.createdAt));
+
   let desk: InnkeeperDeskId = "arena";
-  if (deskParam === "events" || deskParam === "arena") {
+  if (deskParam === "events" || deskParam === "arena" || deskParam === "people") {
     desk = deskParam;
+  } else if (focusPersonId) {
+    desk = "people";
   } else if (pendingEvents.length > 0 && pendingDuels.length === 0) {
     desk = "events";
   }
@@ -90,6 +118,8 @@ export default async function AdminPage({
         liveEvents={liveEvents}
         cancelledEvents={cancelledEvents}
         rejectedEvents={rejectedEvents}
+        people={people}
+        focusPersonId={focusPersonId}
       />
     </main>
   );
