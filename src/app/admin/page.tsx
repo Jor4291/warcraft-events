@@ -122,6 +122,7 @@ export default async function AdminPage({
         rejectedEvents={rejectedEvents}
         people={people}
         focusPersonId={focusPersonId}
+        ipBans={store.ipBans}
       />
     </main>
   );

@@ -28,10 +28,42 @@ const LONG_TERMS = [
   "trannies",
   "wetback",
   "raghead",
+  "molest",
+  "molester",
+  "molested",
+  "molestation",
+  "pedophile",
+  "paedophile",
+  "pedophilia",
+  "paedophilia",
+  "shitskin",
+  "zoophile",
+  "jailbait",
+  "childporn",
+  "kiddieporn",
+  "kidfucker",
+  "childfucker",
+  "kidtoucher",
+  "childmolester",
 ];
 
 /** Short slurs — only as their own token, so "spicy", "raccoon", and "therapist" stay clean. */
-const SHORT_TERMS = ["kike", "spic", "fag", "coon", "gook", "kyke", "chink", "troon", "rapist"];
+const SHORT_TERMS = ["kike", "spic", "fag", "coon", "gook", "kyke", "chink", "troon", "rapist", "nonce", "cunt"];
+
+const PHRASES = ["touchkid", "molestkid", "rapekid", "rapechild", "kidtouch"];
+
+const PEDO_OK = [
+  "pedometer",
+  "pedestrian",
+  "pedestal",
+  "pedigree",
+  "pediatric",
+  "pedicure",
+  "peddle",
+  "torpedo",
+  "pedagogy",
+  "pedant",
+];
 
 function fold(value: string) {
   const lowered = value.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
@@ -73,6 +105,25 @@ export function isBlocked(value: string) {
       return true;
     }
   }
+  if (PHRASES.some((phrase) => collapsed.includes(phrase))) {
+    return true;
+  }
+  if (looksLikePedo(collapsed, parts)) {
+    return true;
+  }
+  return false;
+}
+
+function looksLikePedo(collapsed: string, parts: string[]) {
+  for (const value of [collapsed, ...parts]) {
+    if (!value.includes("pedo") && !value.includes("paedo")) {
+      continue;
+    }
+    if (PEDO_OK.some((ok) => value.includes(ok))) {
+      continue;
+    }
+    return true;
+  }
   return false;
 }
 
@@ -93,7 +144,7 @@ export function maskBlocked(value: string) {
     return value;
   }
   let next = value;
-  for (const term of [...LONG_TERMS, ...SHORT_TERMS]) {
+  for (const term of [...LONG_TERMS, ...SHORT_TERMS, "pedo", "paedo", ...PHRASES]) {
     next = next.replace(termPattern(term), "****");
   }
   return next === value ? HIDDEN_NAME : next;

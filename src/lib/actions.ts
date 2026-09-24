@@ -11,7 +11,8 @@ import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
-import { conductBlock } from "./conduct";
+import { CONDUCT_MESSAGE, conductBlock, isBlocked } from "./conduct";
+import { CONDUCT_STRIKES_TO_BAN, ipBanActive, refuseWrite } from "./ip-ban";
 import {
   banBlock,
   boardBlock,
@@ -146,10 +147,10 @@ function checkboxOn(formData: FormData, name: string) {
   return formData.get(name) === "on";
 }
 
-function eventCopyBlock(formData: FormData, fallbackContact = "") {
+function eventCopyParts(formData: FormData, fallbackContact = "") {
   const fields = parseSignupFieldsJson(formData.get("signupFieldsJson"));
   const links = parseEventLinksJson(formData.get("linksJson"));
-  return conductBlock(
+  return [
     String(formData.get("title") || ""),
     String(formData.get("description") || ""),
     String(formData.get("contact") || fallbackContact),
@@ -159,7 +160,7 @@ function eventCopyBlock(formData: FormData, fallbackContact = "") {
     ...fields.map((field) => field.label),
     ...fields.flatMap((field) => field.options),
     ...links.map((link) => link.label),
-  );
+  ];
 }
 
 function promoteNextWaitlisted(event: EventRecord) {
@@ -233,7 +234,7 @@ export async function submitEvent(formData: FormData) {
     return { error: "Title is required." };
   }
   const description = String(formData.get("description") || "").trim();
-  const blocked = eventCopyBlock(formData, user.displayName);
+  const blocked = await refuseWrite(...eventCopyParts(formData, user.displayName));
   if (blocked) {
     return { error: blocked };
   }
@@ -302,7 +303,7 @@ export async function updateEvent(formData: FormData) {
   if (!title) {
     return { error: "Title is required." };
   }
-  const blocked = eventCopyBlock(formData);
+  const blocked = await refuseWrite(...eventCopyParts(formData));
   if (blocked) {
     return { error: blocked };
   }
@@ -363,7 +364,11 @@ export async function rsvpEvent(formData: FormData) {
   if (!name) {
     return { error: "A character or player name is required." };
   }
-  const nameBlocked = conductBlock(name);
+  const closed = await refuseWrite();
+  if (closed) {
+    return { error: closed };
+  }
+  const nameBlocked = await refuseWrite(name);
   if (nameBlocked) {
     return { error: nameBlocked };
   }
@@ -385,6 +390,9 @@ export async function rsvpEvent(formData: FormData) {
   }
   const collected = collectSignupAnswers(event.signupFields, formData);
   if (collected.error) {
+    if (collected.error === CONDUCT_MESSAGE) {
+      return { error: (await refuseWrite(...Object.values(collected.answers))) || collected.error };
+    }
     return { error: collected.error };
   }
   let error = "";
@@ -730,7 +738,7 @@ export async function createStandaloneBracket(formData: FormData) {
   if (teams.length < 2) {
     return { error: "Add at least two names." };
   }
-  const blocked = conductBlock(title, ...teams);
+  const blocked = await refuseWrite(title, ...teams);
   if (blocked) {
     return { error: blocked };
   }
@@ -797,7 +805,7 @@ export async function saveWhiteboard(slug: string, editKey: string, whiteboard: 
     return found;
   }
   const teams = parseTeams(teamsText);
-  const blocked = conductBlock(whiteboard, ...teams);
+  const blocked = await refuseWrite(whiteboard, ...teams);
   if (blocked) {
     return { error: blocked };
   }
@@ -909,7 +917,7 @@ export async function createForumThread(formData: FormData) {
   if (title.length > FORUM_TITLE_MAX || body.length > FORUM_BODY_MAX) {
     return { error: "That post is too long." };
   }
-  const blocked = conductBlock(title, body);
+  const blocked = await refuseWrite(title, body);
   if (blocked) {
     return { error: blocked };
   }
@@ -944,7 +952,7 @@ export async function replyToForumThread(formData: FormData) {
   if (!body) {
     return { error: "Write a reply." };
   }
-  const blocked = conductBlock(body);
+  const blocked = await refuseWrite(body);
   if (blocked) {
     return { error: blocked };
   }
@@ -1201,4 +1209,74 @@ export async function openEventDiscussion(formData: FormData) {
   });
   revalidateBoard(topic.slug, topic.forumId, event.slug);
   redirect(topicPath(topic.slug));
+}
+
+export async function liftIpBan(ip: string) {
+  if (!(await isInnkeeper())) {
+    return;
+  }
+  const now = new Date().toISOString();
+  await updateStore((data) => {
+    const row = data.ipBans.find((item) => item.ip === ip);
+    if (row && ipBanActive(row)) {
+      row.liftedAt = now;
+    }
+  });
+  revalidatePath("/admin");
+}
+
+export async function banIp(formData: FormData) {
+  if (!(await isInnkeeper())) {
+    return { error: "Only the innkeeper can do that." };
+  }
+  const ip = String(formData.get("ip") || "").trim();
+  if (!ip) {
+    return { error: "Enter an IP address." };
+  }
+  const reason = String(formData.get("reason") || "").trim().slice(0, 120) || "Banned by the innkeeper";
+  const by = (await getSessionUser())?.displayName || "The innkeeper";
+  const now = new Date().toISOString();
+  await updateStore((data) => {
+    const row = data.ipBans.find((item) => item.ip === ip);
+    if (!row) {
+      data.ipBans.unshift({
+        ip,
+        strikes: CONDUCT_STRIKES_TO_BAN,
+        bannedAt: now,
+        liftedAt: "",
+        lastAt: now,
+        reason,
+        by,
+      });
+      return;
+    }
+    row.bannedAt = now;
+    row.liftedAt = "";
+    row.lastAt = now;
+    row.reason = reason;
+    row.by = by;
+    row.strikes = Math.max(row.strikes, CONDUCT_STRIKES_TO_BAN);
+  });
+  revalidatePath("/admin");
+  return { ok: true as const };
+}
+
+export async function sweepBlockedSignups() {
+  if (!(await isInnkeeper())) {
+    return { error: "Only the innkeeper can do that." };
+  }
+  let removed = 0;
+  await updateStore((data) => {
+    for (const event of data.events) {
+      const keep = event.signups.filter(
+        (signup) => !isBlocked(signup.name) && !Object.values(signup.answers).some((value) => isBlocked(value)),
+      );
+      removed += event.signups.length - keep.length;
+      event.signups = keep;
+    }
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  revalidatePath("/events");
+  return { ok: true as const, removed };
 }

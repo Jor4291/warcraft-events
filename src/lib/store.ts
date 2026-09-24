@@ -6,6 +6,7 @@ import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
 import { normalizeEventLinks } from "./event-links";
 import { normalizeForumThread } from "./forum";
+import { normalizeIpBans } from "./ip-ban";
 import { normalizeSanctions } from "./moderation";
 import type { EventRecord, PlayerNotice, StoreData, UserRecord } from "./types";
 import { normalizeCoHosts, normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";
@@ -61,6 +62,7 @@ function normalize(data: Partial<StoreData> | StoreData): StoreData {
       players: data.players ?? [],
       users: (data.users ?? []).map(normalizeUser),
       threads: (data.threads ?? []).map(normalizeForumThread).filter((thread) => thread.id && thread.slug),
+      ipBans: normalizeIpBans(data.ipBans),
     }),
   );
 }

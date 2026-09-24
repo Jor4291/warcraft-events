@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { InnkeeperDoors } from "@/components/InnkeeperDoors";
 import { InnkeeperPeople, type DeskPerson } from "@/components/InnkeeperPeople";
+import { ipBanActive } from "@/lib/ip-ban";
+import type { EventRecord, IpBanRecord, LadderMatch } from "@/lib/types";
 import { adminLogout, moderateEvent, moderateLadderMatch } from "@/lib/actions";
 import { classColor, formatClassName } from "@/lib/display";
 import { stripEventCopy } from "@/lib/event-copy";
 import { confirmedSignups, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
-import type { EventRecord, LadderMatch } from "@/lib/types";
 
 export type InnkeeperDeskId = "arena" | "events" | "people";
 
@@ -59,6 +61,7 @@ export function InnkeeperDesk({
   rejectedEvents,
   people,
   focusPersonId,
+  ipBans = [],
 }: {
   desk: InnkeeperDeskId;
   passwordSession: boolean;
@@ -70,8 +73,10 @@ export function InnkeeperDesk({
   rejectedEvents: EventRecord[];
   people: DeskPerson[];
   focusPersonId: string;
+  ipBans?: IpBanRecord[];
 }) {
   const restrictedCount = people.filter((person) => person.restriction).length;
+  const closedDoors = ipBans.filter(ipBanActive).length;
   return (
     <div className="mt-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -100,7 +105,7 @@ export function InnkeeperDesk({
         <DeskTab href="/admin?desk=events" active={desk === "events"} count={pendingEvents.length}>
           Events
         </DeskTab>
-        <DeskTab href="/admin?desk=people" active={desk === "people"} count={restrictedCount}>
+        <DeskTab href="/admin?desk=people" active={desk === "people"} count={restrictedCount + closedDoors}>
           People
         </DeskTab>
       </div>
@@ -141,7 +146,10 @@ export function InnkeeperDesk({
           </section>
         </div>
       ) : desk === "people" ? (
-        <InnkeeperPeople people={people} focusId={focusPersonId} />
+        <div className="space-y-12">
+          {focusPersonId ? null : <InnkeeperDoors rows={ipBans} />}
+          <InnkeeperPeople people={people} focusId={focusPersonId} />
+        </div>
       ) : (
         <div className="space-y-10">
           <section>

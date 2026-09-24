@@ -160,7 +160,7 @@ export function collectSignupAnswers(
     }
     const blocked = conductBlock(raw);
     if (blocked) {
-      return { answers, error: blocked };
+      return { answers: { ...answers, [field.id]: raw }, error: blocked };
     }
     if (raw) {
       answers[field.id] = raw;

@@ -194,10 +194,21 @@ export type ForumThread = {
   posts: ForumPost[];
 };
 
+export type IpBanRecord = {
+  ip: string;
+  strikes: number;
+  bannedAt: string;
+  liftedAt: string;
+  lastAt: string;
+  reason: string;
+  by: string;
+};
+
 export type StoreData = {
   events: EventRecord[];
   matches: LadderMatch[];
   players: LadderPlayer[];
   users: UserRecord[];
   threads: ForumThread[];
+  ipBans: IpBanRecord[];
 };

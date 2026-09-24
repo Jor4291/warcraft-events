@@ -27,6 +27,7 @@ export const emptyStore = (): StoreData => ({
   players: [],
   users: [],
   threads: [],
+  ipBans: [],
 });
 
 export function uniqueEvents(events: EventRecord[]): EventRecord[] {
