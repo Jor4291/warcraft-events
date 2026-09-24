@@ -12,7 +12,8 @@ import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
 import { CONDUCT_MESSAGE, conductBlock, isBlocked } from "./conduct";
-import { CONDUCT_STRIKES_TO_BAN, ipBanActive, refuseWrite } from "./ip-ban";
+import { refuseWrite } from "./ip-ban";
+import { CONDUCT_STRIKES_TO_BAN, ipBanActive } from "./ip-ban-model";
 import {
   banBlock,
   boardBlock,

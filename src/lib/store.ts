@@ -6,7 +6,7 @@ import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
 import { readPostgres, writePostgres } from "./store-pg";
 import { normalizeEventLinks } from "./event-links";
 import { normalizeForumThread } from "./forum";
-import { normalizeIpBans } from "./ip-ban";
+import { normalizeIpBans } from "./ip-ban-model";
 import { normalizeSanctions } from "./moderation";
 import type { EventRecord, PlayerNotice, StoreData, UserRecord } from "./types";
 import { normalizeCoHosts, normalizeEventSignup, normalizeSignupFields, parseSignupCap } from "./signup-form";

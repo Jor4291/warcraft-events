@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { InnkeeperDoors } from "@/components/InnkeeperDoors";
 import { InnkeeperPeople, type DeskPerson } from "@/components/InnkeeperPeople";
-import { ipBanActive } from "@/lib/ip-ban";
+import { ipBanActive } from "@/lib/ip-ban-model";
 import type { EventRecord, IpBanRecord, LadderMatch } from "@/lib/types";
 import { adminLogout, moderateEvent, moderateLadderMatch } from "@/lib/actions";
 import { classColor, formatClassName } from "@/lib/display";

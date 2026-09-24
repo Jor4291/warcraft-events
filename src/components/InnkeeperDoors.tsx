@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { banIp, liftIpBan, sweepBlockedSignups } from "@/lib/actions";
-import { ipBanActive } from "@/lib/ip-ban";
+import { ipBanActive } from "@/lib/ip-ban-model";
 import type { IpBanRecord } from "@/lib/types";
 
 function formatWhen(iso: string) {
