@@ -3,6 +3,7 @@ import { LadderPreview } from "@/components/LadderPreview";
 import { compareByNextStart, isUpcomingStart } from "@/lib/event-when";
 import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
+import type { EventRecord } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,11 @@ function formatWhen(iso: string) {
 
 export default async function HomePage() {
   const store = await getStore();
-  const upcoming = store.events
-    .filter((event) => event.status === "published" && event.kind === "calendar" && !event.cancelledAt)
-    .filter((event) => isUpcomingStart(event.startsAt))
-    .sort(compareByNextStart)
-    .slice(0, 4);
+  const listed = store.events.filter(
+    (event) => event.status === "published" && event.kind === "calendar" && !event.cancelledAt,
+  );
+  const upcoming = listed.filter((event) => isUpcomingStart(event.startsAt)).sort(compareByNextStart).slice(0, 4);
+  const past = listed.filter((event) => !isUpcomingStart(event.startsAt)).sort(compareByNextStart).slice(0, 4);
   const confirmedMatches = store.matches.filter((match) => match.confirmed).length;
 
   return (
@@ -63,24 +64,36 @@ export default async function HomePage() {
           {upcoming.length === 0 ? (
             <p className="text-[var(--muted)]">The hearth is quiet.</p>
           ) : (
-            <ul className="space-y-4">
-              {upcoming.map((event) => (
-                <li key={event.id} className="border-b border-[var(--line)] pb-4 last:border-0">
-                  <Link href={`/events/${event.slug}`} className="text-lg text-[var(--foreground)]">
-                    {event.title}
-                  </Link>
-                  <p className="text-sm text-[var(--muted)]">
-                    {event.game} · {formatWhen(event.startsAt)} · {event.region || "All regions"}
-                    {event.signupCap > 0 || event.signups.length > 0 ? ` · ${signupSpotsLabel(event)}` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <BoardList events={upcoming} />
           )}
+          {past.length > 0 ? (
+            <div className="mt-8 border-t border-[var(--line)] pt-5">
+              <h3 className="tavern-title mb-4 text-lg text-[var(--gold)]">Past events</h3>
+              <BoardList events={past} />
+            </div>
+          ) : null}
         </section>
 
         <LadderPreview players={store.players} confirmedMatches={confirmedMatches} />
       </div>
     </main>
+  );
+}
+
+function BoardList({ events }: { events: EventRecord[] }) {
+  return (
+    <ul className="space-y-4">
+      {events.map((event) => (
+        <li key={event.id} className="border-b border-[var(--line)] pb-4 last:border-0">
+          <Link href={`/events/${event.slug}`} className="text-lg text-[var(--foreground)]">
+            {event.title}
+          </Link>
+          <p className="text-sm text-[var(--muted)]">
+            {event.game} · {formatWhen(event.startsAt)} · {event.region || "All regions"}
+            {event.signupCap > 0 || event.signups.length > 0 ? ` · ${signupSpotsLabel(event)}` : ""}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
