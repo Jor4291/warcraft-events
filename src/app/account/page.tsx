@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { UploaderTokenPanel } from "@/components/UploaderTokenPanel";
 import { logoutAccount } from "@/lib/actions";
 import { getSessionUser } from "@/lib/auth";
+import { publicText } from "@/lib/conduct";
 import { describeRestriction, restrictionMessage } from "@/lib/moderation";
 import { nightsForUser } from "@/lib/notices";
 import { signupSpotsLabel } from "@/lib/signup-form";
@@ -56,7 +57,7 @@ export default async function AccountPage() {
           <ul className="mt-4 space-y-3">
             {nights.map((night) => (
               <li key={night.eventId} className="border-b border-[var(--line)] pb-3 last:border-0">
-                <Link href={`/events/${night.slug}`}>{night.title}</Link>
+                <Link href={`/events/${night.slug}`}>{publicText(night.title)}</Link>
                 <p className="text-sm text-[var(--muted)]">
                   {night.cancelled ? "Cancelled" : night.waitlisted ? "Waitlist" : night.checkedIn ? "Checked in" : "Signed up"}
                   {night.startsAt ? ` · ${new Date(night.startsAt).toLocaleString()}` : ""}

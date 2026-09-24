@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { conductBlock } from "./conduct";
 import { restrictionMessage, restrictionOf } from "./moderation";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
@@ -70,6 +71,10 @@ export async function registerUser(email: string, password: string, displayName:
   }
   if (name.length < 2) {
     return { error: "Display name is required." };
+  }
+  const blocked = conductBlock(name);
+  if (blocked) {
+    return { error: blocked };
   }
   if (password.length < 6) {
     return { error: "Password must be at least 6 characters." };

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RenameAccountForm } from "@/components/RenameAccountForm";
 import { SanctionForm } from "@/components/SanctionForm";
 import { liftSanction } from "@/lib/actions";
 import { describeRestriction, formatSanctionUntil, sanctionName } from "@/lib/moderation";
@@ -11,6 +12,7 @@ export type DeskPerson = {
   createdAt: string;
   innkeeper: boolean;
   restriction: UserSanction | null;
+  needsRename?: boolean;
   history: UserSanction[];
   topics: number;
   posts: number;
@@ -33,8 +35,9 @@ function formatDay(iso: string) {
 export function InnkeeperPeople({ people, focusId }: { people: DeskPerson[]; focusId: string }) {
   const focused = people.find((person) => person.id === focusId);
   const restricted = people.filter((person) => person.restriction);
-  const flagged = people.filter((person) => !person.restriction && person.hiddenPosts > 0);
-  const others = people.filter((person) => !person.restriction && person.hiddenPosts === 0);
+  const needsName = people.filter((person) => person.needsRename && !person.restriction);
+  const flagged = people.filter((person) => !person.restriction && !person.needsRename && person.hiddenPosts > 0);
+  const others = people.filter((person) => !person.restriction && !person.needsRename && person.hiddenPosts === 0);
 
   if (focused) {
     return (
@@ -65,6 +68,22 @@ export function InnkeeperPeople({ people, focusId }: { people: DeskPerson[]; foc
         ) : (
           <ul className="space-y-3">
             {restricted.map((person) => (
+              <PersonCard key={person.id} person={person} />
+            ))}
+          </ul>
+        )}
+      </section>
+      <section>
+        <SectionHead
+          title="Needs a new name"
+          count={needsName.length}
+          hint="The public already sees Hidden name. Give them something that can hang on the board, or mute them."
+        />
+        {needsName.length === 0 ? (
+          <EmptyCopy>No illicit display names right now.</EmptyCopy>
+        ) : (
+          <ul className="space-y-3">
+            {needsName.map((person) => (
               <PersonCard key={person.id} person={person} />
             ))}
           </ul>
@@ -137,6 +156,9 @@ function PersonCard({ person }: { person: DeskPerson }) {
         {person.innkeeper ? (
           <span className="text-sm uppercase tracking-[0.2em] text-[var(--gold)]">Innkeeper</span>
         ) : null}
+        {person.needsRename ? (
+          <span className="text-sm uppercase tracking-[0.2em] text-[#e07a7a]">Needs a new name</span>
+        ) : null}
         {restriction ? (
           <span className="text-sm uppercase tracking-[0.2em] text-[#e07a7a]">
             {describeRestriction(restriction)}
@@ -181,7 +203,10 @@ function PersonCard({ person }: { person: DeskPerson }) {
           Innkeepers keep the keys. This account cannot be restricted.
         </p>
       ) : (
-        <SanctionForm userId={person.id} replacing={Boolean(restriction)} />
+        <>
+          <RenameAccountForm userId={person.id} currentName={person.displayName} />
+          <SanctionForm userId={person.id} replacing={Boolean(restriction)} />
+        </>
       )}
     </li>
   );

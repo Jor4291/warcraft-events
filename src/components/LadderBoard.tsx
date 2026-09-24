@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { publicName } from "@/lib/conduct";
 import { CLASS_ORDER, classColor, formatClassName, getArenaTitle } from "@/lib/display";
 import {
   buildBoardRows,
@@ -212,7 +213,7 @@ export function LadderBoard({
                               onClick={() => handleRow(row)}
                               style={row.className ? { color: classColor(row.className) } : undefined}
                             >
-                              {row.name}
+                              {publicName(row.name)}
                             </button>
                           </td>
                           {groupBy === "overall" ? (
@@ -290,7 +291,7 @@ export function LadderBoard({
                           style={{ color: classColor(match.winnerClass) }}
                           onClick={() => openPlayer(match.winner)}
                         >
-                          {match.winner}
+                          {publicName(match.winner)}
                         </button>
                         <span className="text-[var(--muted)]"> defeated </span>
                         <button
@@ -299,7 +300,7 @@ export function LadderBoard({
                           style={{ color: classColor(match.loserClass) }}
                           onClick={() => openPlayer(match.loser)}
                         >
-                          {match.loser}
+                          {publicName(match.loser)}
                         </button>
                       </span>
                       <span className="ml-auto text-[var(--gold)]">{formatDelta(match.winnerDelta)}</span>
@@ -307,11 +308,11 @@ export function LadderBoard({
                     {open ? (
                       <div className="space-y-1 px-4 pb-3 text-sm text-[var(--muted)]">
                         <p>
-                          Win {match.winner}{" "}
+                          Win {publicName(match.winner)}{" "}
                           <span className="text-[#7dcea0]">{formatDelta(match.winnerDelta)}</span>
                         </p>
                         <p>
-                          Loss {match.loser}{" "}
+                          Loss {publicName(match.loser)}{" "}
                           <span className="text-[#e07a7a]">{formatDelta(match.loserDelta)}</span>
                         </p>
                       </div>
@@ -355,7 +356,7 @@ function PlayerCard({
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="tavern-title text-xl" style={{ color: classColor(player.className) }}>
-            {player.name}
+            {publicName(player.name)}
           </h2>
           <p className="mt-1 text-sm" style={{ color: title.color }}>
             {title.name}
@@ -391,7 +392,7 @@ function PlayerCard({
               <li key={match.matchId} className="flex justify-between gap-3">
                 <span>
                   <span className={won ? "text-[#7dcea0]" : "text-[#e07a7a]"}>{won ? "W" : "L"}</span>{" "}
-                  <span style={{ color: classColor(opponentClass) }}>{opponent}</span>
+                  <span style={{ color: classColor(opponentClass) }}>{publicName(opponent)}</span>
                 </span>
                 <span className="text-[var(--muted)]">{formatDelta(delta)}</span>
               </li>

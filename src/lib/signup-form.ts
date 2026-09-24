@@ -1,3 +1,4 @@
+import { conductBlock } from "./conduct";
 import type { EventCoHost, EventRecord, EventSignup, SignupField, SignupFieldType } from "./types";
 
 const FIELD_TYPES: SignupFieldType[] = ["short", "long", "choice"];
@@ -156,6 +157,10 @@ export function collectSignupAnswers(
     const max = field.type === "long" ? MAX_LONG : MAX_SHORT;
     if (raw.length > max) {
       return { answers, error: `${field.label} is too long.` };
+    }
+    const blocked = conductBlock(raw);
+    if (blocked) {
+      return { answers, error: blocked };
     }
     if (raw) {
       answers[field.id] = raw;

@@ -11,6 +11,7 @@ import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
+import { conductBlock } from "./conduct";
 import {
   banBlock,
   boardBlock,
@@ -145,6 +146,22 @@ function checkboxOn(formData: FormData, name: string) {
   return formData.get(name) === "on";
 }
 
+function eventCopyBlock(formData: FormData, fallbackContact = "") {
+  const fields = parseSignupFieldsJson(formData.get("signupFieldsJson"));
+  const links = parseEventLinksJson(formData.get("linksJson"));
+  return conductBlock(
+    String(formData.get("title") || ""),
+    String(formData.get("description") || ""),
+    String(formData.get("contact") || fallbackContact),
+    String(formData.get("location") || ""),
+    String(formData.get("format") || ""),
+    String(formData.get("game") || ""),
+    ...fields.map((field) => field.label),
+    ...fields.flatMap((field) => field.options),
+    ...links.map((link) => link.label),
+  );
+}
+
 function promoteNextWaitlisted(event: EventRecord) {
   if (eventIsFull(event)) {
     return undefined;
@@ -215,12 +232,16 @@ export async function submitEvent(formData: FormData) {
   if (!title) {
     return { error: "Title is required." };
   }
+  const description = String(formData.get("description") || "").trim();
+  const blocked = eventCopyBlock(formData, user.displayName);
+  if (blocked) {
+    return { error: blocked };
+  }
   const id = randomBytes(6).toString("hex");
   const editKey = randomBytes(8).toString("hex");
   const inviteCode = randomBytes(4).toString("hex").toUpperCase();
   const slug = slugify(title);
   const mode = signupModeOf(formData.get("signupMode"));
-  const description = String(formData.get("description") || "").trim();
   const topic = makeTopic({
     title,
     body: eventDiscussionBody(title, description),
@@ -281,6 +302,10 @@ export async function updateEvent(formData: FormData) {
   if (!title) {
     return { error: "Title is required." };
   }
+  const blocked = eventCopyBlock(formData);
+  if (blocked) {
+    return { error: blocked };
+  }
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
     if (!target) {
@@ -337,6 +362,10 @@ export async function rsvpEvent(formData: FormData) {
   const inviteCode = String(formData.get("inviteCode") || "").trim().toUpperCase();
   if (!name) {
     return { error: "A character or player name is required." };
+  }
+  const nameBlocked = conductBlock(name);
+  if (nameBlocked) {
+    return { error: nameBlocked };
   }
   const user = await getSessionUser();
   const barred = user ? banBlock(user) : "";
@@ -701,6 +730,10 @@ export async function createStandaloneBracket(formData: FormData) {
   if (teams.length < 2) {
     return { error: "Add at least two names." };
   }
+  const blocked = conductBlock(title, ...teams);
+  if (blocked) {
+    return { error: blocked };
+  }
   const id = randomBytes(6).toString("hex");
   const editKey = randomBytes(8).toString("hex");
   const slug = slugify(title);
@@ -764,6 +797,10 @@ export async function saveWhiteboard(slug: string, editKey: string, whiteboard: 
     return found;
   }
   const teams = parseTeams(teamsText);
+  const blocked = conductBlock(whiteboard, ...teams);
+  if (blocked) {
+    return { error: blocked };
+  }
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
     if (!target) {
@@ -872,6 +909,10 @@ export async function createForumThread(formData: FormData) {
   if (title.length > FORUM_TITLE_MAX || body.length > FORUM_BODY_MAX) {
     return { error: "That post is too long." };
   }
+  const blocked = conductBlock(title, body);
+  if (blocked) {
+    return { error: blocked };
+  }
   const topic = makeTopic({
     title,
     body,
@@ -902,6 +943,10 @@ export async function replyToForumThread(formData: FormData) {
   }
   if (!body) {
     return { error: "Write a reply." };
+  }
+  const blocked = conductBlock(body);
+  if (blocked) {
+    return { error: blocked };
   }
   const store = await getStore();
   const thread = store.threads.find((item) => item.slug === slug);
@@ -1053,6 +1098,71 @@ export async function liftSanction(userId: string) {
   revalidatePath("/admin");
   revalidatePath("/account");
   revalidateBoard();
+}
+
+export async function renameAccount(formData: FormData) {
+  if (!(await isInnkeeper())) {
+    return { error: "Only the innkeeper can do that." };
+  }
+  const userId = String(formData.get("userId") || "");
+  const name = String(formData.get("displayName") || "").trim();
+  if (name.length < 2) {
+    return { error: "Give them a name that can stand on the board." };
+  }
+  const blocked = conductBlock(name);
+  if (blocked) {
+    return { error: blocked };
+  }
+  const scrubRoster = checkboxOn(formData, "scrubRoster");
+  let error = "";
+  await updateStore((data) => {
+    const target = data.users.find((item) => item.id === userId);
+    if (!target) {
+      error = "That account is gone.";
+      return;
+    }
+    if (isHubAccount(target.displayName, target.isHub)) {
+      error = "Innkeeper accounts keep their names.";
+      return;
+    }
+    const previous = target.displayName;
+    target.displayName = name;
+    for (const event of data.events) {
+      if (event.contact === previous) {
+        event.contact = name;
+      }
+      for (const host of event.coHosts) {
+        if (host.userId === userId) {
+          host.displayName = name;
+        }
+      }
+      if (scrubRoster) {
+        for (const signup of event.signups) {
+          if (signup.userId === userId || signup.name === previous) {
+            signup.name = name;
+          }
+        }
+      }
+    }
+    for (const thread of data.threads) {
+      if (thread.authorId === userId) {
+        thread.authorName = name;
+      }
+      for (const post of thread.posts) {
+        if (post.authorId === userId) {
+          post.authorName = name;
+        }
+      }
+    }
+  });
+  if (error) {
+    return { error };
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/admin");
+  revalidatePath("/account");
+  revalidateBoard();
+  return { ok: true as const };
 }
 
 export async function openEventDiscussion(formData: FormData) {

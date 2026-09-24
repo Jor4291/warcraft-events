@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { publicName } from "@/lib/conduct";
 import { classColor, formatClassName, getArenaTitle } from "@/lib/display";
 import type { LadderPlayer } from "@/lib/types";
 
@@ -28,9 +29,9 @@ export function LadderPreview({
 
   return (
     <section className="tavern-frame p-6">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h2 className="tavern-title text-xl">Arena Leaderboard</h2>
-        <Link href="/ladder" className="shrink-0 text-sm">
+      <div className="mb-1 flex items-end justify-between gap-3 border-b border-[var(--gold-dim)] pb-3">
+        <h2 className="tavern-title text-2xl text-[var(--gold-bright)]">Arena Leaderboard</h2>
+        <Link href="/ladder" className="mb-0.5 shrink-0 text-sm">
           Full board
         </Link>
       </div>
@@ -67,7 +68,7 @@ export function LadderPreview({
                       className="block truncate no-underline"
                       style={{ color: classColor(player.className) }}
                     >
-                      {player.name}
+                      {publicName(player.name)}
                     </Link>
                     <p className="mt-0.5 truncate text-xs">
                       <span style={{ color: title.color }}>{title.name}</span>

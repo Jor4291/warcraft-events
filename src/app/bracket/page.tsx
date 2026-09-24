@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CreateBracketForm } from "@/components/CreateBracketForm";
 import { ScratchBracketTool } from "@/components/ScratchBracketTool";
 import { getSessionUser } from "@/lib/auth";
+import { publicText } from "@/lib/conduct";
 import { getStore } from "@/lib/store";
 
 export const metadata = { title: "Scratch bracket" };
@@ -54,7 +55,7 @@ export default async function BracketIndexPage() {
             <ul className="mt-4 space-y-3">
               {boards.map((board) => (
                 <li key={board.id}>
-                  <Link href={`/bracket/${board.slug}`}>{board.title}</Link>
+                  <Link href={`/bracket/${board.slug}`}>{publicText(board.title)}</Link>
                   <p className="text-sm text-[var(--muted)]">{board.teams.length} names</p>
                 </li>
               ))}

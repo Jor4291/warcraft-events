@@ -1,3 +1,4 @@
+import { publicText } from "@/lib/conduct";
 import { eventLinkUrl, suggestLinkLabel } from "@/lib/event-links";
 import type { EventLink } from "@/lib/types";
 
@@ -18,7 +19,7 @@ export function EventLinks({ links, className = "" }: { links: EventLink[]; clas
           rel="noreferrer nofollow"
           className="tavern-btn-ghost px-3 py-1 text-sm no-underline"
         >
-          {link.label || suggestLinkLabel(link.href)}
+          {publicText(link.label || suggestLinkLabel(link.href))}
         </a>
       ))}
     </div>

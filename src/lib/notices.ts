@@ -1,3 +1,4 @@
+import { publicText } from "./conduct";
 import type { EventRecord, EventSignup, PlayerNotice, PlayerNoticeKind, UserRecord } from "./types";
 
 const NOTICE_CAP = 40;
@@ -156,21 +157,22 @@ export function playerInbox(user: UserRecord, events: EventRecord[]): PlayerInbo
 }
 
 export function noticeCopy(notice: PlayerNotice) {
+  const title = publicText(notice.eventTitle);
   switch (notice.kind) {
     case "signup":
-      return `You're on the list for ${notice.eventTitle}.`;
+      return `You're on the list for ${title}.`;
     case "waitlist":
-      return `You're on the waitlist for ${notice.eventTitle}.`;
+      return `You're on the waitlist for ${title}.`;
     case "promoted":
-      return `You got a seat at ${notice.eventTitle}.`;
+      return `You got a seat at ${title}.`;
     case "cancelled":
-      return `${notice.eventTitle} was cancelled.`;
+      return `${title} was cancelled.`;
     case "removed":
-      return `You were removed from ${notice.eventTitle}.`;
+      return `You were removed from ${title}.`;
     case "starts_soon":
-      return `${notice.eventTitle} starts tonight.`;
+      return `${title} starts tonight.`;
     default:
-      return notice.eventTitle;
+      return title;
   }
 }
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EventExplorer } from "@/components/EventExplorer";
+import { publicText } from "@/lib/conduct";
 import { stripEventCopy } from "@/lib/event-copy";
 import { compareByNextStart } from "@/lib/event-when";
 import { confirmedSignups, waitlistedSignups } from "@/lib/signup-form";
@@ -14,13 +15,13 @@ export default async function EventsPage() {
     .sort(compareByNextStart)
     .map((event) => ({
       slug: event.slug,
-      title: event.title,
+      title: publicText(event.title),
       game: event.game,
-      format: event.format,
+      format: publicText(event.format),
       startsAt: event.startsAt,
       region: event.region,
-      location: event.location,
-      description: stripEventCopy(event.description),
+      location: publicText(event.location),
+      description: publicText(stripEventCopy(event.description)),
       signupCount: confirmedSignups(event).length,
       waitlistCount: waitlistedSignups(event).length,
       signupCap: event.signupCap,

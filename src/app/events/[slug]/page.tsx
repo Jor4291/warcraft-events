@@ -6,7 +6,9 @@ import { EventManage } from "@/components/EventManage";
 import { PlayerSignupStatus } from "@/components/PlayerSignupStatus";
 import { SignupPanel } from "@/components/SignupPanel";
 import { StartDiscussionButton } from "@/components/StartDiscussionButton";
+import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
+import { publicBracketRounds, publicName, publicText } from "@/lib/conduct";
 import { canManageEvent, eventForHostClient, isEventOwner } from "@/lib/event-access";
 import { replyCount, threadForEvent, topicPath } from "@/lib/forum";
 import { signupForUser, waitlistPlace } from "@/lib/notices";
@@ -60,7 +62,7 @@ export default async function EventPage({
   if (!event) {
     notFound();
   }
-  const user = await getSessionUser();
+  const [user, innkeeper] = await Promise.all([getSessionUser(), isInnkeeper()]);
   const canEdit = await canManageEvent(event);
   const isOwner = await isEventOwner(event);
   const canView = event.status === "published" || canEdit;
@@ -83,15 +85,17 @@ export default async function EventPage({
           {event.signupMode === "invite" ? "Invite only" : "Open sign-up"}
           {event.signupCap > 0 || roster.length > 0 ? ` · ${spots}` : ""}
         </p>
-        <h1 className="tavern-title mt-2 text-4xl">{event.title}</h1>
+        <h1 className="tavern-title mt-2 text-4xl">{publicText(event.title, innkeeper)}</h1>
         <p className="mt-3 text-xl text-[var(--gold-bright)] md:text-2xl">
           {formatEventStart(event.startsAt)}
           {endsAt ? <span className="text-[var(--gold)]"> to {endsAt}</span> : null}
         </p>
         {event.format || event.location ? (
-          <p className="mt-1 text-lg text-[var(--gold)]">{[event.format, event.location].filter(Boolean).join(" · ")}</p>
+          <p className="mt-1 text-lg text-[var(--gold)]">
+            {[publicText(event.format, innkeeper), publicText(event.location, innkeeper)].filter(Boolean).join(" · ")}
+          </p>
         ) : null}
-        <EventCopy source={event.description} className="mt-4 max-w-3xl" />
+        <EventCopy source={publicText(event.description, innkeeper)} className="mt-4 max-w-3xl" />
         <EventLinks links={event.links} className="mt-4" />
       </div>
 
@@ -144,7 +148,7 @@ export default async function EventPage({
             <ul className="mt-3 columns-1 gap-8 sm:columns-2">
               {roster.map((signup) => (
                 <li key={signup.id} className="mb-1 text-sm">
-                  {signup.name}
+                  {publicName(signup.name, innkeeper || canEdit)}
                   {canEdit && signup.checkedIn ? <span className="ml-2 text-xs text-[var(--gold)]">in</span> : null}
                 </li>
               ))}
@@ -162,10 +166,10 @@ export default async function EventPage({
           slug={event.slug}
           editKey=""
           canEdit={canEdit}
-          whiteboard={event.whiteboard}
-          teams={event.teams}
-          rounds={event.rounds}
-          title={event.title}
+          whiteboard={publicText(event.whiteboard, innkeeper || canEdit)}
+          teams={innkeeper || canEdit ? event.teams : event.teams.map((team) => publicName(team))}
+          rounds={publicBracketRounds(event.rounds, innkeeper || canEdit)}
+          title={publicText(event.title, innkeeper)}
         />
       </div>
     </main>

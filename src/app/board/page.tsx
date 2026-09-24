@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { isInnkeeper } from "@/lib/admin";
+import { publicName, publicText } from "@/lib/conduct";
 import { formatBoardTime, FORUMS, forumPath, forumSummary, topicPath } from "@/lib/forum";
 import { getStore } from "@/lib/store";
 
@@ -42,9 +43,9 @@ export default async function BoardPage() {
               <p className="text-sm text-[var(--muted)] md:text-right">
                 {latest ? (
                   <>
-                    <Link href={topicPath(latest.slug)}>{latest.title}</Link>
+                    <Link href={topicPath(latest.slug)}>{publicText(latest.title, innkeeper)}</Link>
                     <span className="mt-1 block">
-                      {latest.authorName}
+                      {publicName(latest.authorName, innkeeper)}
                       {latest.updatedAt ? ` · ${formatBoardTime(latest.updatedAt)}` : ""}
                     </span>
                   </>

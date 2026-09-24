@@ -4,6 +4,7 @@ import { ForumReplyForm } from "@/components/ForumReplyForm";
 import { moderateForumPost, moderateForumThread } from "@/lib/actions";
 import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
+import { publicName, publicText } from "@/lib/conduct";
 import { formatBoardTime, forumById, forumPath, topicPath, visibleForumPosts } from "@/lib/forum";
 import { boardBlock } from "@/lib/moderation";
 import { getStore } from "@/lib/store";
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const store = await getStore();
   const thread = store.threads.find((item) => item.slug === slug);
-  return { title: thread?.title || "Topic" };
+  return { title: publicText(thread?.title || "Topic") };
 }
 
 export default async function ForumTopicPage({
@@ -42,9 +43,9 @@ export default async function ForumTopicPage({
         <span className="mx-2 text-[var(--muted)]">/</span>
         <Link href={forumPath(forum.id)}>{forum.name}</Link>
       </p>
-      <h1 className="tavern-title mt-2 text-3xl">{thread.title}</h1>
+      <h1 className="tavern-title mt-2 text-3xl">{publicText(thread.title, innkeeper)}</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">
-        Started by {thread.authorName}
+        Started by {publicName(thread.authorName, innkeeper)}
         {thread.createdAt ? ` · ${formatBoardTime(thread.createdAt)}` : ""}
         {thread.lockedAt ? " · Locked" : ""}
         {innkeeper && thread.hiddenAt ? " · Hidden" : ""}
@@ -52,7 +53,7 @@ export default async function ForumTopicPage({
       {linkedEvent ? (
         <p className="mt-3 text-sm">
           This topic is for{" "}
-          <Link href={`/events/${linkedEvent.slug}`}>{linkedEvent.title}</Link>
+          <Link href={`/events/${linkedEvent.slug}`}>{publicText(linkedEvent.title, innkeeper)}</Link>
           {linkedEvent.kind === "calendar" ? " on the calendar." : "."}
         </p>
       ) : null}
@@ -74,13 +75,15 @@ export default async function ForumTopicPage({
         {posts.map((post, index) => (
           <li key={post.id} className="forum-post">
             <div className="forum-post-meta">
-              <p className="text-[var(--gold)]">{post.authorName}</p>
+              <p className="text-[var(--gold)]">{publicName(post.authorName, innkeeper)}</p>
               <p className="mt-2 text-xs text-[var(--muted)]">#{index + 1}</p>
               <p className="mt-1 text-xs text-[var(--muted)]">{formatBoardTime(post.createdAt)}</p>
               {innkeeper && post.hiddenAt ? <p className="mt-2 text-xs text-[var(--muted)]">Hidden</p> : null}
             </div>
             <div className="forum-post-body">
-              <p className={`whitespace-pre-wrap ${post.hiddenAt ? "text-[var(--muted)]" : ""}`}>{post.body}</p>
+              <p className={`whitespace-pre-wrap ${post.hiddenAt ? "text-[var(--muted)]" : ""}`}>
+                {publicText(post.body, innkeeper)}
+              </p>
               {innkeeper ? (
                 <div className="mt-4 flex flex-wrap items-center gap-4">
                   <form action={moderateForumPost.bind(null, thread.slug, post.id, post.hiddenAt ? "shown" : "hidden")}>

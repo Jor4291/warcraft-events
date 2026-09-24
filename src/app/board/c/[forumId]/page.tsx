@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
+import { publicName, publicText } from "@/lib/conduct";
 import {
   formatBoardTime,
   forumById,
@@ -74,23 +75,23 @@ export default async function ForumCategoryPage({
                 <li key={thread.id} className="forum-topic-row">
                   <div>
                     <Link href={topicPath(thread.slug)} className="text-[var(--foreground)]">
-                      {thread.title}
+                      {publicText(thread.title, innkeeper)}
                     </Link>
                     {thread.eventSlug ? <span className="ml-2 text-xs text-[var(--gold)]">Event</span> : null}
                     {thread.lockedAt ? <span className="ml-2 text-xs text-[var(--muted)]">Locked</span> : null}
                     {innkeeper && thread.hiddenAt ? <span className="ml-2 text-xs text-[var(--muted)]">Hidden</span> : null}
                     <p className="mt-1 text-sm text-[var(--muted)] md:hidden">
-                      {thread.authorName}
+                      {publicName(thread.authorName, innkeeper)}
                       {` · ${replies} ${replies === 1 ? "reply" : "replies"}`}
                       {last ? ` · ${formatBoardTime(last.createdAt)}` : ""}
                     </p>
                   </div>
-                  <p className="hidden text-sm text-[var(--muted)] md:block">{thread.authorName}</p>
+                  <p className="hidden text-sm text-[var(--muted)] md:block">{publicName(thread.authorName, innkeeper)}</p>
                   <p className="hidden text-sm text-[var(--muted)] md:block">{replies}</p>
                   <p className="hidden text-sm text-[var(--muted)] md:block">
                     {last ? (
                       <>
-                        {last.authorName}
+                        {publicName(last.authorName, innkeeper)}
                         <span className="mt-1 block">{formatBoardTime(last.createdAt)}</span>
                       </>
                     ) : (

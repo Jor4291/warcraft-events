@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LadderPreview } from "@/components/LadderPreview";
+import { publicText } from "@/lib/conduct";
 import { compareByNextStart, isUpcomingStart } from "@/lib/event-when";
 import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
@@ -57,18 +58,15 @@ export default async function HomePage() {
 
       <div className="grid gap-8 md:grid-cols-2">
         <section className="tavern-frame p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="tavern-title text-xl">Tonight&apos;s board</h2>
-            <Link href="/events">Full calendar</Link>
-          </div>
+          <BoardHead title="Tonight's board" href="/events" link="Full calendar" />
           {upcoming.length === 0 ? (
             <p className="text-[var(--muted)]">The hearth is quiet.</p>
           ) : (
             <BoardList events={upcoming} />
           )}
           {past.length > 0 ? (
-            <div className="mt-8 border-t border-[var(--line)] pt-5">
-              <h3 className="tavern-title mb-4 text-lg text-[var(--gold)]">Past events</h3>
+            <div className="mt-8">
+              <BoardHead title="Past events" as="h3" />
               <BoardList events={past} />
             </div>
           ) : null}
@@ -80,13 +78,36 @@ export default async function HomePage() {
   );
 }
 
+function BoardHead({
+  title,
+  href,
+  link,
+  as: Tag = "h2",
+}: {
+  title: string;
+  href?: string;
+  link?: string;
+  as?: "h2" | "h3";
+}) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-3 border-b border-[var(--gold-dim)] pb-3">
+      <Tag className="tavern-title text-2xl text-[var(--gold-bright)]">{title}</Tag>
+      {href && link ? (
+        <Link href={href} className="mb-0.5 shrink-0 text-sm">
+          {link}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 function BoardList({ events }: { events: EventRecord[] }) {
   return (
     <ul className="space-y-4">
       {events.map((event) => (
         <li key={event.id} className="border-b border-[var(--line)] pb-4 last:border-0">
           <Link href={`/events/${event.slug}`} className="text-lg text-[var(--foreground)]">
-            {event.title}
+            {publicText(event.title)}
           </Link>
           <p className="text-sm text-[var(--muted)]">
             {event.game} · {formatWhen(event.startsAt)} · {event.region || "All regions"}
