@@ -11,8 +11,8 @@ import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
 import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
 import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
-import { CONDUCT_MESSAGE, conductBlock, isBlocked } from "./conduct";
-import { refuseWrite } from "./ip-ban";
+import { CONDUCT_MESSAGE, conductBlock, isBlocked, isBlockedName } from "./conduct";
+import { refuseSignupName, refuseWrite } from "./ip-ban";
 import { CONDUCT_STRIKES_TO_BAN, ipBanActive } from "./ip-ban-model";
 import {
   banBlock,
@@ -185,7 +185,8 @@ export async function registerAccount(formData: FormData) {
   if ("error" in result && result.error) {
     return { error: result.error };
   }
-  redirect("/account");
+  const next = String(formData.get("next") || "/account");
+  redirect(next.startsWith("/") ? next : "/account");
 }
 
 export async function loginAccount(formData: FormData) {
@@ -359,24 +360,23 @@ export async function cancelEvent(formData: FormData) {
 }
 
 export async function rsvpEvent(formData: FormData) {
+  const user = await getSessionUser();
+  if (!user) {
+    return { error: "Sign in to put your name on the list." };
+  }
+  const barred = banBlock(user);
+  if (barred) {
+    return { error: barred };
+  }
   const slug = String(formData.get("slug") || "");
   const name = String(formData.get("name") || "").trim();
   const inviteCode = String(formData.get("inviteCode") || "").trim().toUpperCase();
   if (!name) {
     return { error: "A character or player name is required." };
   }
-  const closed = await refuseWrite();
-  if (closed) {
-    return { error: closed };
-  }
-  const nameBlocked = await refuseWrite(name);
+  const nameBlocked = await refuseSignupName(name);
   if (nameBlocked) {
     return { error: nameBlocked };
-  }
-  const user = await getSessionUser();
-  const barred = user ? banBlock(user) : "";
-  if (barred) {
-    return { error: barred };
   }
   const store = await getStore();
   const event = store.events.find((item) => item.slug === slug);
@@ -404,6 +404,10 @@ export async function rsvpEvent(formData: FormData) {
       error = "Event not found.";
       return;
     }
+    if (target.signups.some((signup) => signup.userId === user.id)) {
+      error = "This account is already on the list.";
+      return;
+    }
     if (target.signups.some((signup) => signup.name.toLowerCase() === name.toLowerCase())) {
       error = "That name is already on the list.";
       return;
@@ -416,7 +420,7 @@ export async function rsvpEvent(formData: FormData) {
     target.signups.push({
       id: randomBytes(4).toString("hex"),
       name,
-      userId: user?.id || "",
+      userId: user.id,
       createdAt: new Date().toISOString(),
       answers: collected.answers,
       waitlisted,
@@ -1270,7 +1274,7 @@ export async function sweepBlockedSignups() {
   await updateStore((data) => {
     for (const event of data.events) {
       const keep = event.signups.filter(
-        (signup) => !isBlocked(signup.name) && !Object.values(signup.answers).some((value) => isBlocked(value)),
+        (signup) => !isBlockedName(signup.name) && !Object.values(signup.answers).some((value) => isBlocked(value)),
       );
       removed += event.signups.length - keep.length;
       event.signups = keep;

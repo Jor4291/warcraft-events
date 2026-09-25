@@ -130,15 +130,29 @@ export default async function EventPage({
       ) : null}
 
       {event.status === "published" && !event.cancelledAt && !mySignup ? (
-        <SignupPanel
-          slug={event.slug}
-          signupMode={event.signupMode}
-          defaultName={user?.displayName || ""}
-          fields={event.signupFields}
-          spotsLabel={spots}
-          isFull={eventIsFull(event)}
-          waitlistEnabled={event.waitlistEnabled}
-        />
+        user ? (
+          <SignupPanel
+            slug={event.slug}
+            signupMode={event.signupMode}
+            defaultName={user.displayName}
+            fields={event.signupFields}
+            spotsLabel={spots}
+            isFull={eventIsFull(event)}
+            waitlistEnabled={event.waitlistEnabled}
+          />
+        ) : (
+          <section className="tavern-frame p-5">
+            <h2 className="tavern-title text-xl">Sign up</h2>
+            <p className="mt-2 text-[var(--muted)]">
+              A tavern account is required to put a name on the list. That keeps walk-up spam off the board.
+            </p>
+            <p className="mt-3">
+              <Link href={`/account/login?next=${encodeURIComponent(`/events/${event.slug}`)}`}>Sign in</Link>
+              {" · "}
+              <Link href={`/account/register?next=${encodeURIComponent(`/events/${event.slug}`)}`}>Register</Link>
+            </p>
+          </section>
+        )
       ) : null}
 
       {roster.length > 0 ? (

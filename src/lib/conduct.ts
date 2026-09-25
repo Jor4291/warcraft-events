@@ -127,8 +127,24 @@ function looksLikePedo(collapsed: string, parts: string[]) {
   return false;
 }
 
+export function isBlockedName(value: string) {
+  if (isBlocked(value)) {
+    return true;
+  }
+  if (!value) {
+    return false;
+  }
+  const collapsed = fold(value);
+  const parts = tokens(value);
+  return collapsed.includes("pdf") || parts.includes("pdf");
+}
+
 export function conductBlock(...parts: string[]) {
   return parts.some((part) => isBlocked(part)) ? CONDUCT_MESSAGE : "";
+}
+
+export function conductBlockName(...parts: string[]) {
+  return parts.some((part) => isBlockedName(part)) ? CONDUCT_MESSAGE : "";
 }
 
 function termPattern(term: string) {
@@ -151,7 +167,7 @@ export function maskBlocked(value: string) {
 }
 
 export function publicName(value: string, innkeeper = false) {
-  if (innkeeper || !isBlocked(value)) {
+  if (innkeeper || !isBlockedName(value)) {
     return value;
   }
   return HIDDEN_NAME;

@@ -52,7 +52,7 @@ export function SignupPanel({
           ? "The roster is full. You can join the waitlist."
           : signupMode === "invite"
             ? "This gathering is invite-only. Ask the host for the door code."
-            : "Open sign-up — add your character name to the list."}{" "}
+            : "Open sign-up — one character name on this account."}{" "}
         {spotsLabel}.
       </p>
       <form
