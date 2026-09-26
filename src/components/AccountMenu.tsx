@@ -3,20 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { logoutAccount, markNoticesRead } from "@/lib/actions";
+import { formatEventWhen } from "@/lib/event-when";
 import { noticeCopy, type PlayerInbox } from "@/lib/notices";
 import type { PublicUser } from "@/lib/types";
 
 function formatWhen(iso: string) {
-  if (!iso) {
-    return "TBA";
-  }
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatEventWhen(iso, { weekday: "short" });
 }
 
 export function AccountMenu({

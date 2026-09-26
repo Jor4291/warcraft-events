@@ -1,24 +1,12 @@
 import Link from "next/link";
 import { LadderPreview } from "@/components/LadderPreview";
 import { publicText } from "@/lib/conduct";
-import { compareByNextStart, isUpcomingStart } from "@/lib/event-when";
+import { compareByNextStart, formatEventWhen, isUpcomingStart } from "@/lib/event-when";
 import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
 import type { EventRecord } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-
-function formatWhen(iso: string) {
-  if (!iso) {
-    return "TBA";
-  }
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export default async function HomePage() {
   const store = await getStore();
@@ -110,7 +98,7 @@ function BoardList({ events }: { events: EventRecord[] }) {
             {publicText(event.title)}
           </Link>
           <p className="text-sm text-[var(--muted)]">
-            {event.game} · {formatWhen(event.startsAt)} · {event.region || "All regions"}
+            {event.game} · {formatEventWhen(event.startsAt)} · {event.region || "All regions"}
             {event.signupCap > 0 || event.signups.length > 0 ? ` · ${signupSpotsLabel(event)}` : ""}
           </p>
         </li>

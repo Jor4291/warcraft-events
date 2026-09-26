@@ -13,6 +13,7 @@ import { canManageEvent, eventForHostClient, isEventOwner } from "@/lib/event-ac
 import { replyCount, threadForEvent, topicPath } from "@/lib/forum";
 import { signupForUser, waitlistPlace } from "@/lib/notices";
 import { confirmedSignups, eventIsFull, signupSpotsLabel } from "@/lib/signup-form";
+import { calendarDay, eventStartMs, formatEventWhen, TAVERN_TZ } from "@/lib/event-when";
 import { getStore } from "@/lib/store";
 import Link from "next/link";
 
@@ -20,35 +21,26 @@ function formatEventStart(iso: string) {
   if (!iso) {
     return "Time to be announced";
   }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-  return date.toLocaleString(undefined, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatEventWhen(iso, { weekday: "long" });
 }
 
 function formatEventEnd(startIso: string, endIso: string) {
   if (!startIso || !endIso) {
     return "";
   }
-  const start = new Date(startIso);
-  const end = new Date(endIso);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+  const start = eventStartMs(startIso);
+  const end = eventStartMs(endIso);
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
     return "";
   }
-  const sameDay = start.toDateString() === end.toDateString();
-  return end.toLocaleString(
-    undefined,
-    sameDay
-      ? { hour: "numeric", minute: "2-digit" }
-      : { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
-  );
+  if (calendarDay(startIso) === calendarDay(endIso)) {
+    return new Date(end).toLocaleString("en-US", {
+      timeZone: TAVERN_TZ,
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+  return formatEventWhen(endIso, { weekday: "short" });
 }
 
 export default async function EventPage({

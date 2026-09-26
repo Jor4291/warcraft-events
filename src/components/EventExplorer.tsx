@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { compareByNextStart } from "@/lib/event-when";
+import { calendarDay, compareByNextStart, formatEventWhen } from "@/lib/event-when";
 import { formatSignupSpots } from "@/lib/signup-form";
 
 export type CalendarEvent = {
@@ -31,21 +31,12 @@ function sameDay(iso: string, year: number, month: number, day: number) {
   if (!iso) {
     return false;
   }
-  const date = new Date(iso);
-  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return calendarDay(iso) === `${year}-${pad(month + 1)}-${pad(day)}`;
 }
 
 function formatWhen(iso: string) {
-  if (!iso) {
-    return "TBA";
-  }
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatEventWhen(iso, { weekday: "short" });
 }
 
 export function EventExplorer({ events }: { events: CalendarEvent[] }) {

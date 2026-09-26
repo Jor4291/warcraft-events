@@ -5,6 +5,7 @@ import { logoutAccount } from "@/lib/actions";
 import { getSessionUser } from "@/lib/auth";
 import { publicText } from "@/lib/conduct";
 import { describeRestriction, restrictionMessage } from "@/lib/moderation";
+import { formatEventWhen } from "@/lib/event-when";
 import { nightsForUser } from "@/lib/notices";
 import { signupSpotsLabel } from "@/lib/signup-form";
 import { getStore } from "@/lib/store";
@@ -70,7 +71,7 @@ export default async function AccountPage() {
                 <Link href={`/events/${night.slug}`}>{publicText(night.title)}</Link>
                 <p className="text-sm text-[var(--muted)]">
                   {night.cancelled ? "Cancelled" : night.waitlisted ? "Waitlist" : night.checkedIn ? "Checked in" : "Signed up"}
-                  {night.startsAt ? ` · ${new Date(night.startsAt).toLocaleString()}` : ""}
+                  {night.startsAt ? ` · ${formatEventWhen(night.startsAt)}` : ""}
                 </p>
               </li>
             ))}

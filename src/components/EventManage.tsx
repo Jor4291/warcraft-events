@@ -13,6 +13,7 @@ import {
   toggleCheckIn,
   updateEvent,
 } from "@/lib/actions";
+import { toDatetimeLocalValue } from "@/lib/event-when";
 import { confirmedSignups, rosterExport, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
 import type { EventRecord, EventSignup } from "@/lib/types";
 import { EventCopyEditor } from "./EventCopyEditor";
@@ -20,15 +21,7 @@ import { EventLinksBuilder } from "./EventLinksBuilder";
 import { SignupFormBuilder } from "./SignupFormBuilder";
 
 function toDatetimeLocal(value: string) {
-  if (!value) {
-    return "";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value.length >= 16 ? value.slice(0, 16) : value;
-  }
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return toDatetimeLocalValue(value);
 }
 
 export function EventManage({ event, editKey, isOwner }: { event: EventRecord; editKey: string; isOwner: boolean }) {

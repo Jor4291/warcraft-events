@@ -6,25 +6,16 @@ import type { EventRecord, IpBanRecord, LadderMatch } from "@/lib/types";
 import { adminLogout, moderateEvent, moderateLadderMatch } from "@/lib/actions";
 import { classColor, formatClassName } from "@/lib/display";
 import { stripEventCopy } from "@/lib/event-copy";
+import { formatEventWhen } from "@/lib/event-when";
 import { confirmedSignups, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
 
 export type InnkeeperDeskId = "arena" | "events" | "people";
 
-function formatEventWhen(iso: string) {
+function formatDeskEventWhen(iso: string) {
   if (!iso) {
     return "No time set";
   }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-  return date.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatEventWhen(iso, { weekday: "short" });
 }
 
 function formatDuelWhen(timestamp: number) {
@@ -283,7 +274,7 @@ function EventCard({ event, pending = false }: { event: EventRecord; pending?: b
   const meta = [
     eventKindLabel(event),
     event.game,
-    formatEventWhen(event.startsAt),
+    formatDeskEventWhen(event.startsAt),
     event.region || "All regions",
     event.contact,
     signups > 0 || waiting > 0 || event.signupCap > 0 ? signupSpotsLabel(event) : "",
