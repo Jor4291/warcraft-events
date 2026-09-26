@@ -41,7 +41,7 @@ export default async function AccountPage() {
         <section className="tavern-frame border-l-2 border-[var(--gold)] p-5">
           <h2 className="tavern-title text-xl">Confirm this mailbox</h2>
           <p className="mt-2 text-[var(--muted)]">
-            A 6-digit hearth code was sent to {user.email}. This stool cannot take a roster slot or write on the board
+            A 6-digit hearth code was sent to {user.email}. This account cannot take a roster slot or write on the board
             until that mailbox answers.{" "}
             <Link href="/account/confirm">Enter the code</Link>
           </p>

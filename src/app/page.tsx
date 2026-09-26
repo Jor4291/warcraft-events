@@ -22,7 +22,7 @@ export default async function HomePage() {
       <section className="tavern-frame mb-12 p-8 md:p-10">
         <p className="text-sm uppercase tracking-[0.28em] text-[var(--gold)]">The Lion&apos;s Pride · WarcraftEvents.com</p>
         <h1 className="tavern-title mt-3 max-w-3xl text-4xl leading-[1.15] md:text-5xl">
-          <span className="block">Pull up a stool.</span>
+          <span className="block">Pull up a chair.</span>
           <span className="block">Check the board.</span>
           <span className="block">Settle it in the yard.</span>
         </h1>

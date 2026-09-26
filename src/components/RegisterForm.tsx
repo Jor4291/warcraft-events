@@ -13,7 +13,7 @@ export function RegisterForm({ next }: { next: string }) {
       <h1 className="tavern-title text-3xl">Register</h1>
       <p className="mt-2 mb-8 text-[var(--muted)]">
         A light tavern account is enough to book events, talk on the corkboard, and send rated duels.{" "}
-        <Link href={loginHref}>Already have a stool?</Link>
+        <Link href={loginHref}>Already a patron?</Link>
       </p>
       <form
         className="space-y-4"
@@ -35,7 +35,7 @@ export function RegisterForm({ next }: { next: string }) {
           <input name="email" type="email" required className="tavern-input" />
         </label>
         <p className="-mt-2 text-sm text-[var(--muted)]">
-          Use an address that can receive mail. We will send a short code before this stool can write or take a roster
+          Use an address that can receive mail. We will send a short code before a new patron can write or take a roster
           slot. Throwaways and nonsense domains will not get in.
         </p>
         <label className="block text-sm">

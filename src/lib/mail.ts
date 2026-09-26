@@ -21,7 +21,7 @@ export async function sendConfirmCode(to: string, code: string) {
     from: FROM,
     to,
     subject: "Your WarcraftEvents hearth code",
-    html: `<p>Your confirm code is <strong>${code}</strong>.</p><p>It lasts 20 minutes. If you did not open a stool at WarcraftEvents, ignore this.</p>`,
+    html: `<p>Your confirm code is <strong>${code}</strong>.</p><p>It lasts 20 minutes. If you did not open an account at WarcraftEvents, ignore this.</p>`,
     text: `Your confirm code is ${code}. It lasts 20 minutes.`,
   });
 

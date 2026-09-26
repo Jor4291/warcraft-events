@@ -123,7 +123,7 @@ export function InnkeeperPeople({ people, focusId }: { people: DeskPerson[]; foc
           <span className="ml-2 text-base font-normal tabular-nums text-[var(--muted)]">{people.length}</span>
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-          Scan the roll, then open one stool. Search by name, email, or IP.
+          Scan the roll, then open one patron. Search by name, email, or IP.
         </p>
       </div>
 

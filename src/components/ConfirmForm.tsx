@@ -12,7 +12,7 @@ export function ConfirmForm({ email, next }: { email: string; next: string }) {
     <main className="mx-auto w-full max-w-md px-6 py-12">
       <h1 className="tavern-title text-3xl">Confirm this mailbox</h1>
       <p className="mt-2 mb-8 text-[var(--muted)]">
-        We sent a 6-digit hearth code to <span className="text-[var(--gold)]">{email}</span>. New stools cannot take a
+        We sent a 6-digit hearth code to <span className="text-[var(--gold)]">{email}</span>. New patrons cannot take a
         roster slot or write on the board until that mailbox answers.
       </p>
       <form
@@ -63,7 +63,7 @@ export function ConfirmForm({ email, next }: { email: string; next: string }) {
         </button>
       </form>
       <p className="mt-6 text-sm text-[var(--muted)]">
-        Wrong address? <Link href="/account">Open your stool</Link> and sign out, then register again.
+        Wrong address? <Link href="/account">Open your account</Link> and sign out, then register again.
       </p>
     </main>
   );

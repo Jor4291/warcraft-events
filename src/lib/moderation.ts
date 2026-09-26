@@ -147,10 +147,10 @@ export function banBlock(user: Restricted) {
 
 type Mailbox = { emailVerified?: boolean; isInnkeeper?: boolean };
 
-/** New stools must prove the mailbox before they write or take a roster slot. */
+/** New patrons must prove the mailbox before they write or take a roster slot. */
 export function mailBlock(user: Mailbox) {
   if (user.isInnkeeper || user.emailVerified) {
     return "";
   }
-  return "Confirm the mailbox on this stool before you write on the board or put your name on a night.";
+  return "Confirm the mailbox on this account before you write on the board or put your name on a night.";
 }
