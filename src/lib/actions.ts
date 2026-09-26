@@ -1257,33 +1257,18 @@ export async function banIp(formData: FormData) {
 
 export async function closeAccountDoors(userId: string) {
   if (!(await isInnkeeper())) {
-    return { error: "Only the innkeeper can do that." };
+    return;
   }
   const by = (await getSessionUser())?.displayName || "The innkeeper";
   const now = new Date().toISOString();
-  let error = "";
-  let closed = 0;
   await updateStore((data) => {
     const target = data.users.find((item) => item.id === userId);
-    if (!target) {
-      error = "That account is gone.";
+    if (!target || isHubAccount(target.displayName, target.isHub)) {
       return;
     }
-    if (isHubAccount(target.displayName, target.isHub)) {
-      error = "Innkeeper accounts cannot be restricted.";
-      return;
-    }
-    closed = target.ips.length;
     closeUserDoors(data, target, now, by);
   });
-  if (error) {
-    return { error };
-  }
-  if (!closed) {
-    return { error: "No IPs are on this account yet. They will show up after they sign in or try the roster." };
-  }
   revalidatePath("/admin");
-  return { ok: true as const, closed };
 }
 
 export async function sweepBlockedSignups() {
