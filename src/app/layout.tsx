@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
 import { requestTimeZone } from "@/lib/client-ip";
+import { noteUserIp } from "@/lib/ip-ban";
 import { emptyInbox, playerInbox } from "@/lib/notices";
 import { namesEqual } from "@/lib/player-name";
 import { getStore } from "@/lib/store";
@@ -36,6 +37,9 @@ async function loadNav(userId: string, displayName: string) {
   const [store, timeZone] = await Promise.all([getStore(), requestTimeZone()]);
   const record = store.users.find((item) => item.id === userId);
   const player = store.players.find((item) => namesEqual(item.name, displayName));
+  if (record) {
+    void noteUserIp(record.id);
+  }
   return {
     inbox: record ? playerInbox(record, store.events, timeZone) : emptyInbox(),
     rating: player ? { name: player.name, points: Math.round(player.points) } : null,

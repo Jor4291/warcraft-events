@@ -338,7 +338,9 @@ function PersonCard({ person }: { person: DeskPerson }) {
         </div>
       ) : person.innkeeper ? null : (
         <p className="mt-3 text-sm text-[var(--muted)]">
-          No IP on this account yet. It will show after they sign in or try the roster.
+          No IP on file. These burners were likely made before we started keeping doors, and a ban
+          stops them from signing in so we cannot stamp one now. If they try the password again, or
+          still have an old session, the address will land here.
         </p>
       )}
       {restriction ? (

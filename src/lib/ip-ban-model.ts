@@ -88,6 +88,20 @@ export function normalizeUserIps(raw: unknown): UserIpSighting[] {
   return rows.slice(0, IP_HISTORY);
 }
 
+const IP_REFRESH_MS = 6 * 60 * 60 * 1000;
+
+export function ipNeedsRemember(user: UserRecord, ip: string, now = Date.now()) {
+  if (!ip) {
+    return false;
+  }
+  const existing = user.ips?.find((row) => row.ip === ip);
+  if (!existing) {
+    return true;
+  }
+  const last = Date.parse(existing.lastAt);
+  return !Number.isFinite(last) || now - last >= IP_REFRESH_MS;
+}
+
 export function rememberUserIp(user: UserRecord, ip: string, now: string) {
   if (!ip) {
     return;

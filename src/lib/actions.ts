@@ -365,11 +365,11 @@ export async function rsvpEvent(formData: FormData) {
   if (!user) {
     return { error: "Sign in to put your name on the list." };
   }
+  await noteUserIp(user.id);
   const barred = banBlock(user);
   if (barred) {
     return { error: barred };
   }
-  await noteUserIp(user.id);
   const slug = String(formData.get("slug") || "");
   const name = String(formData.get("name") || "").trim();
   const inviteCode = String(formData.get("inviteCode") || "").trim().toUpperCase();

@@ -143,6 +143,7 @@ export async function loginUser(email: string, password: string) {
   if (!user || !verifyPassword(password, user.passwordHash, user.passwordSalt)) {
     return { error: "Email or password is incorrect." };
   }
+  await noteUserIp(user.id, true);
   const restriction = restrictionOf(user.sanctions);
   if (restriction && restriction.kind === "ban") {
     return { error: restrictionMessage(restriction) };
@@ -152,7 +153,6 @@ export async function loginUser(email: string, password: string) {
     return { error: door };
   }
   await setSession(user.id);
-  await noteUserIp(user.id);
   return { ok: true as const };
 }
 
