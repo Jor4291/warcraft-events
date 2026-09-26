@@ -35,7 +35,8 @@ export function RegisterForm({ next }: { next: string }) {
           <input name="email" type="email" required className="tavern-input" />
         </label>
         <p className="-mt-2 text-sm text-[var(--muted)]">
-          Use an address that can receive mail. Throwaways and nonsense domains will not get in.
+          Use an address that can receive mail. We will send a short code before this stool can write or take a roster
+          slot. Throwaways and nonsense domains will not get in.
         </p>
         <label className="block text-sm">
           Password

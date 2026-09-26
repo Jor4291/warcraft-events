@@ -4,7 +4,18 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isInnkeeper, loginAdmin, logoutAdmin } from "./admin";
-import { getSessionUser, hashUploadToken, hubNameList, isHubAccount, loginUser, logoutUser, registerUser } from "./auth";
+import {
+  afterAuthPath,
+  confirmMailbox,
+  getSessionUser,
+  hashUploadToken,
+  hubNameList,
+  isHubAccount,
+  loginUser,
+  logoutUser,
+  registerUser,
+  resendMailboxCode,
+} from "./auth";
 import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
 import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
@@ -19,6 +30,7 @@ import {
   banBlock,
   boardBlock,
   hostBlock,
+  mailBlock,
   isSanctionKind,
   normalizeSanctions,
   sanctionExpiry,
@@ -113,7 +125,7 @@ async function findManageable(slug: string) {
     return { error: "You cannot edit this board." };
   }
   const user = await getSessionUser();
-  const barred = user ? banBlock(user) : "";
+  const barred = user ? banBlock(user) || mailBlock(user) : "";
   if (barred) {
     return { error: barred };
   }
@@ -187,7 +199,8 @@ export async function registerAccount(formData: FormData) {
     return { error: result.error };
   }
   const next = String(formData.get("next") || "/account");
-  redirect(next.startsWith("/") ? next : "/account");
+  const user = await getSessionUser();
+  redirect(user ? afterAuthPath(user, next) : "/account");
 }
 
 export async function loginAccount(formData: FormData) {
@@ -196,7 +209,22 @@ export async function loginAccount(formData: FormData) {
     return { error: result.error };
   }
   const next = String(formData.get("next") || "/account");
+  const user = await getSessionUser();
+  redirect(user ? afterAuthPath(user, next) : "/account");
+}
+
+export async function confirmAccount(formData: FormData) {
+  const result = await confirmMailbox(String(formData.get("code") || ""));
+  if ("error" in result && result.error) {
+    return { error: result.error };
+  }
+  const next = String(formData.get("next") || "/account");
+  revalidatePath("/account");
   redirect(next.startsWith("/") ? next : "/account");
+}
+
+export async function resendConfirmCode() {
+  return resendMailboxCode();
 }
 
 export async function logoutAccount() {
@@ -208,6 +236,10 @@ export async function generateUploadToken() {
   const user = await getSessionUser();
   if (!user) {
     return { error: "Sign in to create an uploader key." };
+  }
+  const unconfirmed = mailBlock(user);
+  if (unconfirmed) {
+    return { error: unconfirmed };
   }
   const token = `weu_${randomBytes(24).toString("hex")}`;
   const isHub = hubNameList().includes(canonicalPlayerName(user.displayName) || user.displayName.trim().toLowerCase());
@@ -228,7 +260,7 @@ export async function submitEvent(formData: FormData) {
   if (!user) {
     return { error: "Sign in to book an event." };
   }
-  const barred = hostBlock(user);
+  const barred = hostBlock(user) || mailBlock(user);
   if (barred) {
     return { error: barred };
   }
@@ -366,7 +398,7 @@ export async function rsvpEvent(formData: FormData) {
     return { error: "Sign in to put your name on the list." };
   }
   await noteUserIp(user.id);
-  const barred = banBlock(user);
+  const barred = banBlock(user) || mailBlock(user);
   if (barred) {
     return { error: barred };
   }
@@ -672,7 +704,7 @@ export async function duplicateEvent(formData: FormData) {
   }
   const source = found.event;
   const user = await getSessionUser();
-  const barred = user ? hostBlock(user) : "";
+  const barred = user ? hostBlock(user) || mailBlock(user) : "";
   if (barred) {
     return { error: barred };
   }
@@ -737,7 +769,7 @@ export async function createStandaloneBracket(formData: FormData) {
   if (!user) {
     return { error: "Sign in to hang a bracket." };
   }
-  const barred = hostBlock(user);
+  const barred = hostBlock(user) || mailBlock(user);
   if (barred) {
     return { error: barred };
   }
@@ -909,7 +941,7 @@ export async function createForumThread(formData: FormData) {
   if (!user) {
     return { error: "Sign in to start a topic." };
   }
-  const barred = boardBlock(user);
+  const barred = boardBlock(user) || mailBlock(user);
   if (barred) {
     return { error: barred };
   }
@@ -948,7 +980,7 @@ export async function replyToForumThread(formData: FormData) {
   if (!user) {
     return { error: "Sign in to reply." };
   }
-  const barred = boardBlock(user);
+  const barred = boardBlock(user) || mailBlock(user);
   if (barred) {
     return { error: barred };
   }
@@ -1190,7 +1222,7 @@ export async function openEventDiscussion(formData: FormData) {
   if (!user) {
     return { error: "Sign in to start a discussion." };
   }
-  const barred = boardBlock(user);
+  const barred = boardBlock(user) || mailBlock(user);
   if (barred) {
     return { error: barred };
   }

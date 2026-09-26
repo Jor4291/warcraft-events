@@ -87,6 +87,14 @@ export function AccountMenu({
           {user ? (
             <>
               <p className="nav-menu-kicker">{user.displayName}</p>
+              {!user.emailVerified ? (
+                <p className="text-sm text-[var(--muted)]">
+                  <Link href="/account/confirm" onClick={onNavigate}>
+                    Confirm this mailbox
+                  </Link>{" "}
+                  before you write or take a roster slot.
+                </p>
+              ) : null}
               {inbox.notices.length === 0 && nights.length === 0 ? (
                 <p className="text-sm text-[var(--muted)]">
                   No nights on the board yet.{" "}

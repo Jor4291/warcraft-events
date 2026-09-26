@@ -16,6 +16,7 @@ export type DeskPerson = {
   innkeeper: boolean;
   restriction: UserSanction | null;
   needsRename?: boolean;
+  unconfirmed?: boolean;
   ips: UserIpSighting[];
   history: UserSanction[];
   topics: number;
@@ -45,7 +46,7 @@ function lastActivity(person: DeskPerson) {
 }
 
 function needsAttention(person: DeskPerson) {
-  return Boolean(person.restriction || person.needsRename || person.hiddenPosts > 0);
+  return Boolean(person.restriction || person.needsRename || person.hiddenPosts > 0 || person.unconfirmed);
 }
 
 function matchesQuery(person: DeskPerson, query: string) {
@@ -272,6 +273,9 @@ function PersonRow({ person, active, onPick }: { person: DeskPerson; active: boo
           {person.needsRename ? (
             <span className="text-xs uppercase tracking-[0.18em] text-[#e07a7a]">Bad name</span>
           ) : null}
+          {person.unconfirmed ? (
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--gold)]">Unconfirmed</span>
+          ) : null}
           {restriction ? (
             <span className="text-xs uppercase tracking-[0.18em] text-[#e07a7a]">
               {describeRestriction(restriction)}
@@ -306,6 +310,9 @@ function PersonCard({ person }: { person: DeskPerson }) {
         ) : null}
         {person.needsRename ? (
           <span className="text-sm uppercase tracking-[0.2em] text-[#e07a7a]">Needs a new name</span>
+        ) : null}
+        {person.unconfirmed ? (
+          <span className="text-sm uppercase tracking-[0.2em] text-[var(--gold)]">Mailbox unconfirmed</span>
         ) : null}
         {restriction ? (
           <span className="text-sm uppercase tracking-[0.2em] text-[#e07a7a]">

@@ -126,6 +126,11 @@ export type UserRecord = {
   seenSoonIds: string[];
   sanctions: UserSanction[];
   ips: UserIpSighting[];
+  emailVerifyRequired: boolean;
+  emailVerifiedAt: string;
+  emailVerifyHash: string;
+  emailVerifyExpiresAt: string;
+  emailVerifySentAt: string;
   createdAt: string;
 };
 
@@ -136,6 +141,7 @@ export type PublicUser = {
   isHub: boolean;
   isInnkeeper: boolean;
   hasUploadToken: boolean;
+  emailVerified: boolean;
   restriction: UserRestriction | null;
 };
 

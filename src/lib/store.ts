@@ -52,6 +52,11 @@ function normalizeUser(user: UserRecord): UserRecord {
     seenSoonIds: normalizeSeenSoonIds(user.seenSoonIds),
     sanctions: normalizeSanctions(user.sanctions),
     ips: normalizeUserIps(user.ips),
+    emailVerifyRequired: Boolean(user.emailVerifyRequired),
+    emailVerifiedAt: String(user.emailVerifiedAt || ""),
+    emailVerifyHash: String(user.emailVerifyHash || ""),
+    emailVerifyExpiresAt: String(user.emailVerifyExpiresAt || ""),
+    emailVerifySentAt: String(user.emailVerifySentAt || ""),
   };
 }
 

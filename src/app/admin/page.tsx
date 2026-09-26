@@ -89,6 +89,7 @@ export default async function AdminPage({
         innkeeper: isHubAccount(account.displayName, account.isHub),
         restriction,
         needsRename: isBlocked(account.displayName) || isBlockedName(account.displayName) || isBlocked(account.email),
+        unconfirmed: Boolean(account.emailVerifyRequired),
         ips: account.ips ?? [],
         history: sanctions.filter((sanction) => sanction.id !== restriction?.id),
         topics: store.threads.filter((thread) => thread.authorId === account.id).length,

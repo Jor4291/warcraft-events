@@ -36,6 +36,16 @@ export default async function AccountPage() {
         </form>
       </div>
       <div className="space-y-6">
+      {!user.emailVerified ? (
+        <section className="tavern-frame border-l-2 border-[var(--gold)] p-5">
+          <h2 className="tavern-title text-xl">Confirm this mailbox</h2>
+          <p className="mt-2 text-[var(--muted)]">
+            A 6-digit hearth code was sent to {user.email}. This stool cannot take a roster slot or write on the board
+            until that mailbox answers.{" "}
+            <Link href="/account/confirm">Enter the code</Link>
+          </p>
+        </section>
+      ) : null}
       {user.restriction ? (
         <section className="tavern-frame border-l-2 border-[#e07a7a] p-5">
           <h2 className="tavern-title text-xl">{describeRestriction(user.restriction)}</h2>

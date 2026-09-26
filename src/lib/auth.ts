@@ -1,14 +1,18 @@
-import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { isLoopbackIp, requestIp } from "./client-ip";
 import { emailBlock, splitEmail } from "./email";
 import { CONDUCT_MESSAGE } from "./conduct";
 import { refuseWrite, noteUserIp } from "./ip-ban";
 import { rememberUserIp } from "./ip-ban-model";
+import { sendConfirmCode } from "./mail";
 import { restrictionMessage, restrictionOf } from "./moderation";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
 import type { PublicUser, UserRecord } from "./types";
+
+const CODE_MS = 20 * 60 * 1000;
+const RESEND_WAIT_MS = 60 * 1000;
 
 const COOKIE = "we_user";
 
@@ -41,8 +45,36 @@ function publicUser(user: UserRecord): PublicUser {
     isHub,
     isInnkeeper: isHubAccount(user.displayName, isHub),
     hasUploadToken: Boolean(user.uploadTokenHash),
+    emailVerified: !user.emailVerifyRequired,
     restriction: restrictionOf(user.sanctions),
   };
+}
+
+function hashVerifyCode(code: string) {
+  return createHash("sha256").update(`${secret()}:${code}`).digest("hex");
+}
+
+function makeVerifyCode() {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+function stampVerifyCode(user: UserRecord, now = new Date()) {
+  const code = makeVerifyCode();
+  user.emailVerifyRequired = true;
+  user.emailVerifyHash = hashVerifyCode(code);
+  user.emailVerifyExpiresAt = new Date(now.getTime() + CODE_MS).toISOString();
+  user.emailVerifySentAt = now.toISOString();
+  return code;
+}
+
+export function confirmPath(next = "/account") {
+  const dest = next.startsWith("/") ? next : "/account";
+  return dest === "/account/confirm" ? dest : `/account/confirm?next=${encodeURIComponent(dest)}`;
+}
+
+export function afterAuthPath(user: PublicUser, next = "/account") {
+  const dest = next.startsWith("/") ? next : "/account";
+  return user.emailVerified || user.isInnkeeper ? dest : confirmPath(dest);
 }
 
 export async function getSessionUser(): Promise<PublicUser | null> {
@@ -100,6 +132,7 @@ export async function registerUser(email: string, password: string, displayName:
   const now = new Date().toISOString();
   const ip = await requestIp();
   let created = false;
+  let issuedCode = "";
   try {
     await updateStore((data) => {
       if (data.users.some((user) => user.email === normalized)) {
@@ -118,11 +151,18 @@ export async function registerUser(email: string, password: string, displayName:
         seenSoonIds: [],
         sanctions: [],
         ips: [],
+        emailVerifyRequired: true,
+        emailVerifiedAt: "",
+        emailVerifyHash: "",
+        emailVerifyExpiresAt: "",
+        emailVerifySentAt: "",
         createdAt: now,
       };
       if (ip && !isLoopbackIp(ip)) {
         rememberUserIp(account, ip, now);
       }
+      const code = stampVerifyCode(account, new Date(now));
+      issuedCode = code;
       data.users.push(account);
     });
   } catch (error) {
@@ -131,6 +171,12 @@ export async function registerUser(email: string, password: string, displayName:
   }
   if (!created) {
     return { error: "That email is already registered." };
+  }
+  if (issuedCode) {
+    const mailed = await sendConfirmCode(normalized, issuedCode);
+    if ("error" in mailed && mailed.error) {
+      console.error("Confirm mail failed after register");
+    }
   }
   await setSession(id);
   return { ok: true as const };
@@ -154,6 +200,86 @@ export async function loginUser(email: string, password: string) {
   }
   await setSession(user.id);
   return { ok: true as const };
+}
+
+export async function confirmMailbox(rawCode: string) {
+  const session = await getSessionUser();
+  if (!session) {
+    return { error: "Sign in to confirm this mailbox." };
+  }
+  if (session.emailVerified) {
+    return { ok: true as const };
+  }
+  const code = rawCode.replace(/\D/g, "");
+  if (code.length !== 6) {
+    return { error: "Enter the 6-digit code from the mail." };
+  }
+  const now = Date.now();
+  const expected = hashVerifyCode(code);
+  let matched = false;
+  await updateStore((data) => {
+    const user = data.users.find((item) => item.id === session.id);
+    if (!user || !user.emailVerifyRequired) {
+      matched = true;
+      return;
+    }
+    if (!user.emailVerifyHash || !user.emailVerifyExpiresAt) {
+      return;
+    }
+    if (new Date(user.emailVerifyExpiresAt).getTime() < now) {
+      return;
+    }
+    const prev = Buffer.from(user.emailVerifyHash, "hex");
+    const next = Buffer.from(expected, "hex");
+    if (prev.length !== next.length || !timingSafeEqual(prev, next)) {
+      return;
+    }
+    user.emailVerifyRequired = false;
+    user.emailVerifiedAt = new Date().toISOString();
+    user.emailVerifyHash = "";
+    user.emailVerifyExpiresAt = "";
+    user.emailVerifySentAt = "";
+    matched = true;
+  });
+  if (!matched) {
+    return { error: "That code is wrong or has gone cold. Request a new one." };
+  }
+  return { ok: true as const };
+}
+
+export async function resendMailboxCode() {
+  const session = await getSessionUser();
+  if (!session) {
+    return { error: "Sign in to send a new code." };
+  }
+  if (session.emailVerified) {
+    return { ok: true as const };
+  }
+  let code = "";
+  let error = "";
+  await updateStore((data) => {
+    const user = data.users.find((item) => item.id === session.id);
+    if (!user) {
+      error = "Account not found.";
+      return;
+    }
+    if (!user.emailVerifyRequired) {
+      return;
+    }
+    const sent = user.emailVerifySentAt ? new Date(user.emailVerifySentAt).getTime() : 0;
+    if (sent && Date.now() - sent < RESEND_WAIT_MS) {
+      error = "Wait a minute before asking for another code.";
+      return;
+    }
+    code = stampVerifyCode(user);
+  });
+  if (error) {
+    return { error };
+  }
+  if (!code) {
+    return { ok: true as const };
+  }
+  return sendConfirmCode(session.email, code);
 }
 
 export async function logoutUser() {
