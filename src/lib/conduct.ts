@@ -4,13 +4,36 @@ export const HIDDEN_NAME = "Hidden name";
 const LEET: Record<string, string> = {
   "0": "o",
   "1": "i",
+  "2": "z",
   "3": "e",
   "4": "a",
   "5": "s",
+  "6": "g",
   "7": "t",
+  "8": "b",
+  "9": "g",
   "@": "a",
   "$": "s",
   "!": "i",
+  "|": "i",
+  "+": "t",
+  "(": "c",
+  ")": "c",
+  "<": "c",
+  "€": "e",
+  "£": "e",
+};
+
+const HOMO: Record<string, string> = {
+  а: "a",
+  е: "e",
+  о: "o",
+  і: "i",
+  с: "c",
+  р: "p",
+  у: "y",
+  х: "x",
+  ѕ: "s",
 };
 
 /** Long enough to match inside a mashed character name. */
@@ -19,6 +42,20 @@ const LONG_TERMS = [
   "niggers",
   "nigga",
   "niggaz",
+  "niggur",
+  "niggurs",
+  "nigguh",
+  "niggah",
+  "niggor",
+  "niggir",
+  "nigglet",
+  "fuggs",
+  "fugg",
+  "phuck",
+  "fvck",
+  "fuk",
+  "fukk",
+  "fked",
   "faggot",
   "faggots",
   "retard",
@@ -71,14 +108,23 @@ const PEDO_OK = [
 function fold(value: string) {
   const lowered = value.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
   let out = "";
-  for (const ch of lowered) {
+  for (const raw of lowered) {
+    const ch = HOMO[raw] || raw;
     if (LEET[ch]) {
       out += LEET[ch];
     } else if (ch >= "a" && ch <= "z") {
       out += ch;
     }
   }
-  return out;
+  return squeeze(out);
+}
+
+function squeeze(value: string) {
+  return value.replace(/(.)\1{2,}/g, "$1$1");
+}
+
+function soften(value: string) {
+  return value.replace(/ph/g, "f").replace(/vv/g, "w").replace(/ck/g, "k");
 }
 
 function tokens(value: string) {
@@ -117,7 +163,23 @@ export function isBlocked(value: string) {
   if (looksLikeCock(collapsed, parts)) {
     return true;
   }
+  if (looksLikeNigger(collapsed, parts)) {
+    return true;
+  }
+  if (looksLikeFuck(collapsed, parts)) {
+    return true;
+  }
   return false;
+}
+
+function looksLikeNigger(collapsed: string, parts: string[]) {
+  const slur = /nigg[aeiou]*[rszah]/;
+  return [collapsed, ...parts].some((value) => slur.test(soften(value)));
+}
+
+function looksLikeFuck(collapsed: string, parts: string[]) {
+  const slur = /f[uvi]*[ckg]{2,}s?/;
+  return [collapsed, ...parts].some((value) => slur.test(soften(value)));
 }
 
 function looksLikeCock(collapsed: string, parts: string[]) {
