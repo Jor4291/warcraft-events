@@ -1,8 +1,8 @@
 import { publicText } from "./conduct";
+import { soonSeenKey, startsTonight, TAVERN_TZ } from "./event-when";
 import type { EventRecord, EventSignup, PlayerNotice, PlayerNoticeKind, UserRecord } from "./types";
 
 const NOTICE_CAP = 40;
-const SOON_MS = 24 * 60 * 60 * 1000;
 const STORED_KINDS: PlayerNoticeKind[] = ["signup", "waitlist", "promoted", "cancelled", "removed"];
 
 export type PlayerNight = {
@@ -127,17 +127,25 @@ export function nightsForUser(userId: string, events: EventRecord[]): PlayerNigh
   });
 }
 
-export function soonNightIds(nights: PlayerNight[]) {
-  return nights.filter((night) => !night.cancelled && !night.waitlisted && startsSoon(night.startsAt)).map((night) => night.eventId);
+export function soonNightIds(nights: PlayerNight[], timeZone = TAVERN_TZ) {
+  return nights
+    .filter((night) => !night.cancelled && !night.waitlisted && startsTonight(night.startsAt, Date.now(), timeZone))
+    .map((night) => night.eventId);
 }
 
-export function playerInbox(user: UserRecord, events: EventRecord[]): PlayerInbox {
+export function soonSeenKeys(nights: PlayerNight[], timeZone = TAVERN_TZ) {
+  return nights
+    .filter((night) => !night.cancelled && !night.waitlisted && startsTonight(night.startsAt, Date.now(), timeZone))
+    .map((night) => soonSeenKey(night.eventId, night.startsAt, timeZone));
+}
+
+export function playerInbox(user: UserRecord, events: EventRecord[], timeZone = TAVERN_TZ): PlayerInbox {
   const nights = nightsForUser(user.id, events);
-  const soonIds = soonNightIds(nights);
+  const soonIds = soonNightIds(nights, timeZone);
   const soon = nights
     .filter((night) => soonIds.includes(night.eventId))
     .map((night) => {
-      const seen = user.seenSoonIds.includes(night.eventId);
+      const seen = user.seenSoonIds.includes(soonSeenKey(night.eventId, night.startsAt, timeZone));
       return {
         id: `soon-${night.eventId}`,
         kind: "starts_soon" as const,
@@ -174,16 +182,4 @@ export function noticeCopy(notice: PlayerNotice) {
     default:
       return title;
   }
-}
-
-function startsSoon(iso: string) {
-  if (!iso) {
-    return false;
-  }
-  const start = new Date(iso).getTime();
-  if (!Number.isFinite(start)) {
-    return false;
-  }
-  const delta = start - Date.now();
-  return delta > 0 && delta <= SOON_MS;
 }

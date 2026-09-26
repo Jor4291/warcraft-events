@@ -1,6 +1,10 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { refuseWrite } from "./ip-ban";
+import { isLoopbackIp, requestIp } from "./client-ip";
+import { emailBlock, splitEmail } from "./email";
+import { CONDUCT_MESSAGE } from "./conduct";
+import { refuseWrite, noteUserIp } from "./ip-ban";
+import { rememberUserIp } from "./ip-ban-model";
 import { restrictionMessage, restrictionOf } from "./moderation";
 import { canonicalPlayerName } from "./player-name";
 import { getStore, updateStore } from "./store";
@@ -72,7 +76,15 @@ export async function registerUser(email: string, password: string, displayName:
   if (name.length < 2) {
     return { error: "Display name is required." };
   }
-  const blocked = await refuseWrite(name);
+  const { local, domain } = splitEmail(normalized);
+  const mail = await emailBlock(normalized);
+  if (mail === CONDUCT_MESSAGE) {
+    return { error: (await refuseWrite(name, local, domain, domain.replace(/\./g, ""))) || mail };
+  }
+  if (mail) {
+    return { error: mail };
+  }
+  const blocked = await refuseWrite(name, local, domain, domain.replace(/\./g, ""));
   if (blocked) {
     return { error: blocked };
   }
@@ -85,6 +97,8 @@ export async function registerUser(email: string, password: string, displayName:
   }
   const id = randomBytes(8).toString("hex");
   const { hash, salt } = hashPassword(password);
+  const now = new Date().toISOString();
+  const ip = await requestIp();
   let created = false;
   try {
     await updateStore((data) => {
@@ -92,7 +106,7 @@ export async function registerUser(email: string, password: string, displayName:
         return data;
       }
       created = true;
-      data.users.push({
+      const account: UserRecord = {
         id,
         email: normalized,
         displayName: name,
@@ -103,8 +117,13 @@ export async function registerUser(email: string, password: string, displayName:
         notifications: [],
         seenSoonIds: [],
         sanctions: [],
-        createdAt: new Date().toISOString(),
-      });
+        ips: [],
+        createdAt: now,
+      };
+      if (ip && !isLoopbackIp(ip)) {
+        rememberUserIp(account, ip, now);
+      }
+      data.users.push(account);
     });
   } catch (error) {
     console.error("Failed to register user", error);
@@ -128,7 +147,12 @@ export async function loginUser(email: string, password: string) {
   if (restriction && restriction.kind === "ban") {
     return { error: restrictionMessage(restriction) };
   }
+  const door = await refuseWrite();
+  if (door) {
+    return { error: door };
+  }
   await setSession(user.id);
+  await noteUserIp(user.id);
   return { ok: true as const };
 }
 

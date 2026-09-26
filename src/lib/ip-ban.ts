@@ -1,6 +1,6 @@
 import { requestIp, isLoopbackIp } from "./client-ip";
 import { conductBlock, conductBlockName } from "./conduct";
-import { applyConductStrike, IP_BAN_MESSAGE, isIpBanned } from "./ip-ban-model";
+import { applyConductStrike, IP_BAN_MESSAGE, isIpBanned, rememberUserIp } from "./ip-ban-model";
 import { getStore, updateStore } from "./store";
 
 export { CONDUCT_STRIKES_TO_BAN, IP_BAN_MESSAGE, ipBanActive } from "./ip-ban-model";
@@ -30,4 +30,18 @@ export async function refuseWrite(...parts: string[]) {
 
 export async function refuseSignupName(name: string) {
   return refuseChecked(conductBlockName(name));
+}
+
+export async function noteUserIp(userId: string) {
+  const ip = await requestIp();
+  if (!ip || isLoopbackIp(ip)) {
+    return;
+  }
+  const now = new Date().toISOString();
+  await updateStore((data) => {
+    const user = data.users.find((item) => item.id === userId);
+    if (user) {
+      rememberUserIp(user, ip, now);
+    }
+  });
 }

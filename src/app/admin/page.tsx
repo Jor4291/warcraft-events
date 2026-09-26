@@ -4,7 +4,7 @@ import { InnkeeperDesk, type InnkeeperDeskId } from "@/components/InnkeeperDesk"
 import type { DeskPerson } from "@/components/InnkeeperPeople";
 import { getSessionUser, isHubAccount } from "@/lib/auth";
 import { activeSanction, normalizeSanctions } from "@/lib/moderation";
-import { isBlocked } from "@/lib/conduct";
+import { isBlocked, isBlockedName } from "@/lib/conduct";
 import { awaitingInnkeeper } from "@/lib/rating";
 import { getStore } from "@/lib/store";
 import Link from "next/link";
@@ -88,7 +88,8 @@ export default async function AdminPage({
         createdAt: account.createdAt,
         innkeeper: isHubAccount(account.displayName, account.isHub),
         restriction,
-        needsRename: isBlocked(account.displayName),
+        needsRename: isBlocked(account.displayName) || isBlockedName(account.displayName) || isBlocked(account.email),
+        ips: account.ips ?? [],
         history: sanctions.filter((sanction) => sanction.id !== restriction?.id),
         topics: store.threads.filter((thread) => thread.authorId === account.id).length,
         posts: posts.length,

@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SiteNav } from "@/components/SiteNav";
 import { isInnkeeper } from "@/lib/admin";
 import { getSessionUser } from "@/lib/auth";
+import { requestTimeZone } from "@/lib/client-ip";
 import { emptyInbox, playerInbox } from "@/lib/notices";
 import { namesEqual } from "@/lib/player-name";
 import { getStore } from "@/lib/store";
@@ -32,11 +33,11 @@ export const metadata: Metadata = {
 };
 
 async function loadNav(userId: string, displayName: string) {
-  const store = await getStore();
+  const [store, timeZone] = await Promise.all([getStore(), requestTimeZone()]);
   const record = store.users.find((item) => item.id === userId);
   const player = store.players.find((item) => namesEqual(item.name, displayName));
   return {
-    inbox: record ? playerInbox(record, store.events) : emptyInbox(),
+    inbox: record ? playerInbox(record, store.events, timeZone) : emptyInbox(),
     rating: player ? { name: player.name, points: Math.round(player.points) } : null,
   };
 }

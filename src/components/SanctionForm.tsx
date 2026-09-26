@@ -65,6 +65,10 @@ export function SanctionForm({ userId, replacing }: { userId: string; replacing:
         <input type="checkbox" name="purgePosts" />
         Hide everything they have posted
       </label>
+      <label className="mt-2 flex items-center gap-2 text-sm">
+        <input type="checkbox" name="closeDoors" key={kind} defaultChecked={kind === "ban"} />
+        Close their doors — ban every IP we have seen on this account
+      </label>
       {error ? <p className="mt-3 text-red-300">{error}</p> : null}
       {note ? <p className="mt-3 text-sm text-[var(--gold)]">{note}</p> : null}
       <button className="tavern-btn mt-4 text-sm" type="submit">

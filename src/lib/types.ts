@@ -108,6 +108,12 @@ export type UserRestriction = {
   expiresAt: string;
 };
 
+export type UserIpSighting = {
+  ip: string;
+  lastAt: string;
+  seen: number;
+};
+
 export type UserRecord = {
   id: string;
   email: string;
@@ -119,6 +125,7 @@ export type UserRecord = {
   notifications: PlayerNotice[];
   seenSoonIds: string[];
   sanctions: UserSanction[];
+  ips: UserIpSighting[];
   createdAt: string;
 };
 

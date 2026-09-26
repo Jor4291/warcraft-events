@@ -1,3 +1,33 @@
+export const TAVERN_TZ = "America/Chicago";
+
+export function calendarDay(value: string | number | Date, timeZone = TAVERN_TZ) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function startsTonight(iso: string, now = Date.now(), timeZone = TAVERN_TZ) {
+  const start = eventStartMs(iso);
+  if (Number.isNaN(start) || start <= now) {
+    return false;
+  }
+  const today = calendarDay(now, timeZone);
+  const night = calendarDay(iso, timeZone);
+  return Boolean(today && night && today === night);
+}
+
+export function soonSeenKey(eventId: string, startsAt: string, timeZone = TAVERN_TZ) {
+  const day = calendarDay(startsAt, timeZone);
+  return day ? `${eventId}:${day}` : eventId;
+}
+
 export function eventStartMs(iso: string) {
   if (!iso) {
     return Number.NaN;

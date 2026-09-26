@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { RenameAccountForm } from "@/components/RenameAccountForm";
 import { SanctionForm } from "@/components/SanctionForm";
-import { liftSanction } from "@/lib/actions";
+import { closeAccountDoors, liftSanction } from "@/lib/actions";
 import { describeRestriction, formatSanctionUntil, sanctionName } from "@/lib/moderation";
-import type { UserSanction } from "@/lib/types";
+import type { UserIpSighting, UserSanction } from "@/lib/types";
 
 export type DeskPerson = {
   id: string;
@@ -13,6 +13,7 @@ export type DeskPerson = {
   innkeeper: boolean;
   restriction: UserSanction | null;
   needsRename?: boolean;
+  ips: UserIpSighting[];
   history: UserSanction[];
   topics: number;
   posts: number;
@@ -166,6 +167,33 @@ function PersonCard({ person }: { person: DeskPerson }) {
         ) : null}
       </div>
       <p className="mt-1 text-sm text-[var(--muted)]">{meta.join(" · ")}</p>
+      {person.ips.length > 0 ? (
+        <div className="mt-3 text-sm">
+          <p className="text-[var(--muted)]">Seen from</p>
+          <ul className="mt-1 space-y-1">
+            {person.ips.map((sight) => (
+              <li key={sight.ip} className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-mono text-[var(--gold)]">{sight.ip}</span>
+                <span className="text-[var(--muted)]">
+                  {sight.seen} {sight.seen === 1 ? "time" : "times"}
+                  {sight.lastAt ? ` · last ${formatDay(sight.lastAt)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {person.innkeeper ? null : (
+            <form action={closeAccountDoors.bind(null, person.id)} className="mt-2">
+              <button className="tavern-btn-ghost text-sm" type="submit">
+                Close their doors
+              </button>
+            </form>
+          )}
+        </div>
+      ) : person.innkeeper ? null : (
+        <p className="mt-3 text-sm text-[var(--muted)]">
+          No IP on this account yet. It will show after they sign in or try the roster.
+        </p>
+      )}
       {restriction ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-l-2 border-[#e07a7a] pl-3">
           <p className="text-sm">

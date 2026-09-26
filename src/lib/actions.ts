@@ -9,11 +9,12 @@ import { applyWinner, buildSingleElim } from "./brackets";
 import { ingestArdu1 } from "./ard";
 import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
-import { makeNotice, nightsForUser, pushNotice, soonNightIds } from "./notices";
+import { requestTimeZone } from "./client-ip";
+import { makeNotice, nightsForUser, pushNotice, soonSeenKeys } from "./notices";
 import { clipForumBody, clipForumTitle, eventDiscussionBody, FORUM_BODY_MAX, FORUM_TITLE_MAX, forumPath, isForumId, topicPath } from "./forum";
 import { CONDUCT_MESSAGE, conductBlock, isBlocked, isBlockedName } from "./conduct";
-import { refuseSignupName, refuseWrite } from "./ip-ban";
-import { CONDUCT_STRIKES_TO_BAN, ipBanActive } from "./ip-ban-model";
+import { noteUserIp, refuseSignupName, refuseWrite } from "./ip-ban";
+import { closeIp, closeUserDoors, ipBanActive } from "./ip-ban-model";
 import {
   banBlock,
   boardBlock,
@@ -368,6 +369,7 @@ export async function rsvpEvent(formData: FormData) {
   if (barred) {
     return { error: barred };
   }
+  await noteUserIp(user.id);
   const slug = String(formData.get("slug") || "");
   const name = String(formData.get("name") || "").trim();
   const inviteCode = String(formData.get("inviteCode") || "").trim().toUpperCase();
@@ -511,6 +513,7 @@ export async function markNoticesRead() {
     return { ok: true as const };
   }
   const now = new Date().toISOString();
+  const timeZone = await requestTimeZone();
   await updateStore((data) => {
     const target = data.users.find((item) => item.id === user.id);
     if (!target) {
@@ -521,8 +524,8 @@ export async function markNoticesRead() {
         notice.readAt = now;
       }
     }
-    const soonIds = soonNightIds(nightsForUser(user.id, data.events));
-    target.seenSoonIds = [...new Set([...target.seenSoonIds, ...soonIds])];
+    const soonKeys = soonSeenKeys(nightsForUser(user.id, data.events), timeZone);
+    target.seenSoonIds = [...new Set([...target.seenSoonIds, ...soonKeys])];
   });
   revalidatePath("/", "layout");
   return { ok: true as const };
@@ -1050,6 +1053,7 @@ export async function sanctionUser(formData: FormData) {
   const reason = String(formData.get("reason") || "").trim().slice(0, SANCTION_REASON_MAX);
   const expiresAt = sanctionExpiry(kind === "ban" ? "open" : String(formData.get("length") || "open"));
   const purge = checkboxOn(formData, "purgePosts");
+  const closeDoors = checkboxOn(formData, "closeDoors");
   const by = (await getSessionUser())?.displayName || "The innkeeper";
   const now = new Date().toISOString();
   let error = "";
@@ -1070,6 +1074,9 @@ export async function sanctionUser(formData: FormData) {
         sanctionInForce(sanction) ? { ...sanction, liftedAt: now } : sanction,
       ),
     ];
+    if (closeDoors) {
+      closeUserDoors(data, target, now, by);
+    }
     if (!purge) {
       return;
     }
@@ -1242,28 +1249,41 @@ export async function banIp(formData: FormData) {
   const by = (await getSessionUser())?.displayName || "The innkeeper";
   const now = new Date().toISOString();
   await updateStore((data) => {
-    const row = data.ipBans.find((item) => item.ip === ip);
-    if (!row) {
-      data.ipBans.unshift({
-        ip,
-        strikes: CONDUCT_STRIKES_TO_BAN,
-        bannedAt: now,
-        liftedAt: "",
-        lastAt: now,
-        reason,
-        by,
-      });
-      return;
-    }
-    row.bannedAt = now;
-    row.liftedAt = "";
-    row.lastAt = now;
-    row.reason = reason;
-    row.by = by;
-    row.strikes = Math.max(row.strikes, CONDUCT_STRIKES_TO_BAN);
+    closeIp(data, ip, now, by, reason);
   });
   revalidatePath("/admin");
   return { ok: true as const };
+}
+
+export async function closeAccountDoors(userId: string) {
+  if (!(await isInnkeeper())) {
+    return { error: "Only the innkeeper can do that." };
+  }
+  const by = (await getSessionUser())?.displayName || "The innkeeper";
+  const now = new Date().toISOString();
+  let error = "";
+  let closed = 0;
+  await updateStore((data) => {
+    const target = data.users.find((item) => item.id === userId);
+    if (!target) {
+      error = "That account is gone.";
+      return;
+    }
+    if (isHubAccount(target.displayName, target.isHub)) {
+      error = "Innkeeper accounts cannot be restricted.";
+      return;
+    }
+    closed = target.ips.length;
+    closeUserDoors(data, target, now, by);
+  });
+  if (error) {
+    return { error };
+  }
+  if (!closed) {
+    return { error: "No IPs are on this account yet. They will show up after they sign in or try the roster." };
+  }
+  revalidatePath("/admin");
+  return { ok: true as const, closed };
 }
 
 export async function sweepBlockedSignups() {

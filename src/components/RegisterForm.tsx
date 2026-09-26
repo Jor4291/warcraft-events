@@ -34,6 +34,9 @@ export function RegisterForm({ next }: { next: string }) {
           Email
           <input name="email" type="email" required className="tavern-input" />
         </label>
+        <p className="-mt-2 text-sm text-[var(--muted)]">
+          Use an address that can receive mail. Throwaways and nonsense domains will not get in.
+        </p>
         <label className="block text-sm">
           Password
           <input name="password" type="password" required minLength={6} className="tavern-input" />

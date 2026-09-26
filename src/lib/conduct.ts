@@ -45,12 +45,15 @@ const LONG_TERMS = [
   "childfucker",
   "kidtoucher",
   "childmolester",
+  "blackcock",
 ];
 
 /** Short slurs — only as their own token, so "spicy", "raccoon", and "therapist" stay clean. */
 const SHORT_TERMS = ["kike", "spic", "fag", "coon", "gook", "kyke", "chink", "troon", "rapist", "nonce", "cunt"];
 
 const PHRASES = ["touchkid", "molestkid", "rapekid", "rapechild", "kidtouch"];
+
+const COCK_OK = ["peacock", "hancock", "cocktail", "cockatiel", "cockerel", "cockle", "stopcock", "weathercock", "poppycock", "cockney"];
 
 const PEDO_OK = [
   "pedometer",
@@ -109,6 +112,22 @@ export function isBlocked(value: string) {
     return true;
   }
   if (looksLikePedo(collapsed, parts)) {
+    return true;
+  }
+  if (looksLikeCock(collapsed, parts)) {
+    return true;
+  }
+  return false;
+}
+
+function looksLikeCock(collapsed: string, parts: string[]) {
+  for (const value of [collapsed, ...parts]) {
+    if (!value.includes("cock")) {
+      continue;
+    }
+    if (COCK_OK.some((ok) => value.includes(ok))) {
+      continue;
+    }
     return true;
   }
   return false;
