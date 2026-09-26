@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { RenameAccountForm } from "@/components/RenameAccountForm";
 import { SanctionForm } from "@/components/SanctionForm";
 import { closeAccountDoors, liftSanction } from "@/lib/actions";
@@ -22,6 +25,9 @@ export type DeskPerson = {
   lastPostAt: string;
 };
 
+type PeopleFilter = "attention" | "restricted" | "rename" | "flagged" | "all";
+type PeopleSort = "recent" | "name" | "joined" | "posts";
+
 function formatDay(iso: string) {
   if (!iso) {
     return "";
@@ -33,109 +39,250 @@ function formatDay(iso: string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function InnkeeperPeople({ people, focusId }: { people: DeskPerson[]; focusId: string }) {
-  const focused = people.find((person) => person.id === focusId);
-  const restricted = people.filter((person) => person.restriction);
-  const needsName = people.filter((person) => person.needsRename && !person.restriction);
-  const flagged = people.filter((person) => !person.restriction && !person.needsRename && person.hiddenPosts > 0);
-  const others = people.filter((person) => !person.restriction && !person.needsRename && person.hiddenPosts === 0);
+function lastActivity(person: DeskPerson) {
+  const ipLast = person.ips.reduce((latest, sight) => (sight.lastAt > latest ? sight.lastAt : latest), "");
+  return [person.lastPostAt, ipLast, person.createdAt].reduce((latest, value) => (value > latest ? value : latest), "");
+}
 
-  if (focused) {
-    return (
-      <div>
-        <div className="mb-4">
-          <h2 className="tavern-title text-xl text-[var(--gold)]">Picked from the board</h2>
-          <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-            You followed a post here. <Link href="/admin?desk=people">Back to everyone</Link>.
-          </p>
-        </div>
-        <ul>
-          <PersonCard person={focused} />
-        </ul>
-      </div>
-    );
+function needsAttention(person: DeskPerson) {
+  return Boolean(person.restriction || person.needsRename || person.hiddenPosts > 0);
+}
+
+function matchesQuery(person: DeskPerson, query: string) {
+  if (!query) {
+    return true;
+  }
+  const hay = [person.displayName, person.email, ...person.ips.map((sight) => sight.ip)].join(" ").toLowerCase();
+  return hay.includes(query);
+}
+
+export function InnkeeperPeople({ people, focusId }: { people: DeskPerson[]; focusId: string }) {
+  const attention = people.filter(needsAttention);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<PeopleFilter>(attention.length > 0 ? "attention" : "all");
+  const [sort, setSort] = useState<PeopleSort>("recent");
+  const [pickedId, setPickedId] = useState(focusId);
+  const [seenFocus, setSeenFocus] = useState(focusId);
+
+  if (focusId !== seenFocus) {
+    setSeenFocus(focusId);
+    setPickedId(focusId);
   }
 
+  const counts = {
+    attention: attention.length,
+    restricted: people.filter((person) => person.restriction).length,
+    rename: people.filter((person) => person.needsRename).length,
+    flagged: people.filter((person) => person.hiddenPosts > 0).length,
+    all: people.length,
+  };
+
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const filtered = people.filter((person) => {
+      if (!matchesQuery(person, needle)) {
+        return false;
+      }
+      if (filter === "attention") {
+        return needsAttention(person);
+      }
+      if (filter === "restricted") {
+        return Boolean(person.restriction);
+      }
+      if (filter === "rename") {
+        return Boolean(person.needsRename);
+      }
+      if (filter === "flagged") {
+        return person.hiddenPosts > 0;
+      }
+      return true;
+    });
+    return filtered.sort((a, b) => {
+      if (sort === "name") {
+        return a.displayName.localeCompare(b.displayName);
+      }
+      if (sort === "joined") {
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      }
+      if (sort === "posts") {
+        return b.posts - a.posts || a.displayName.localeCompare(b.displayName);
+      }
+      return lastActivity(b).localeCompare(lastActivity(a)) || a.displayName.localeCompare(b.displayName);
+    });
+  }, [people, query, filter, sort]);
+
+  const picked = people.find((person) => person.id === pickedId) ?? null;
+  const fromBoard = Boolean(focusId && picked && picked.id === focusId);
+
   return (
-    <div className="space-y-10">
-      <section>
-        <SectionHead
-          title="Under restriction"
-          count={restricted.length}
-          hint="Mutes and timeouts lift themselves when they run out. A ban stays until you lift it."
-        />
-        {restricted.length === 0 ? (
-          <EmptyCopy>Nobody is restricted right now.</EmptyCopy>
-        ) : (
-          <ul className="space-y-3">
-            {restricted.map((person) => (
-              <PersonCard key={person.id} person={person} />
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <SectionHead
-          title="Needs a new name"
-          count={needsName.length}
-          hint="The public already sees Hidden name. Give them something that can hang on the board, or mute them."
-        />
-        {needsName.length === 0 ? (
-          <EmptyCopy>No illicit display names right now.</EmptyCopy>
-        ) : (
-          <ul className="space-y-3">
-            {needsName.map((person) => (
-              <PersonCard key={person.id} person={person} />
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <SectionHead
-          title="Worth a look"
-          count={flagged.length}
-          hint="Accounts with posts you have hidden but no restriction on the account itself."
-        />
-        {flagged.length === 0 ? (
-          <EmptyCopy>Nothing hidden that is not already handled.</EmptyCopy>
-        ) : (
-          <ul className="space-y-3">
-            {flagged.map((person) => (
-              <PersonCard key={person.id} person={person} />
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <SectionHead title="Everyone at the tavern" count={others.length} hint="Newest talkers first." />
-        {others.length === 0 ? (
-          <EmptyCopy>No other accounts.</EmptyCopy>
-        ) : (
-          <ul className="space-y-3">
-            {others.map((person) => (
-              <PersonCard key={person.id} person={person} />
-            ))}
-          </ul>
-        )}
-      </section>
+    <div>
+      <div className="mb-4">
+        <h2 className="tavern-title text-xl text-[var(--gold)]">
+          People
+          <span className="ml-2 text-base font-normal tabular-nums text-[var(--muted)]">{people.length}</span>
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
+          Scan the roll, then open one stool. Search by name, email, or IP.
+        </p>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <label className="min-w-56 flex-1 text-sm">
+          Find
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Name, email, or IP"
+            className="tavern-input"
+          />
+        </label>
+        <label className="text-sm">
+          Sort
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as PeopleSort)}
+            className="tavern-input"
+          >
+            <option value="recent">Most recent</option>
+            <option value="name">Name</option>
+            <option value="joined">Newest join</option>
+            <option value="posts">Most posts</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <FilterChip id="attention" current={filter} count={counts.attention} onPick={setFilter}>
+          Needs a look
+        </FilterChip>
+        <FilterChip id="restricted" current={filter} count={counts.restricted} onPick={setFilter}>
+          Restricted
+        </FilterChip>
+        <FilterChip id="rename" current={filter} count={counts.rename} onPick={setFilter}>
+          Bad names
+        </FilterChip>
+        <FilterChip id="flagged" current={filter} count={counts.flagged} onPick={setFilter}>
+          Hidden posts
+        </FilterChip>
+        <FilterChip id="all" current={filter} count={counts.all} onPick={setFilter}>
+          Everyone
+        </FilterChip>
+      </div>
+
+      {fromBoard ? (
+        <p className="mb-3 text-sm text-[var(--muted)]">
+          You followed a post here.{" "}
+          <Link href="/admin?desk=people" onClick={() => setPickedId("")}>
+            Clear the pick
+          </Link>
+          .
+        </p>
+      ) : null}
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
+        <div className={`tavern-frame overflow-hidden ${picked ? "hidden lg:block" : ""}`}>
+          <div className="border-b border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)]">
+            {rows.length} {rows.length === 1 ? "account" : "accounts"}
+          </div>
+          {rows.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-[var(--muted)]">Nobody matches that.</p>
+          ) : (
+            <ul className="max-h-[70vh] divide-y divide-[var(--line)] overflow-y-auto">
+              {rows.map((person) => (
+                <PersonRow
+                  key={person.id}
+                  person={person}
+                  active={person.id === picked?.id}
+                  onPick={() => setPickedId(person.id === pickedId ? "" : person.id)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className={picked ? "lg:sticky lg:top-24" : "hidden lg:block"}>
+          {picked ? (
+            <div>
+              <button
+                type="button"
+                className="tavern-btn-ghost mb-3 px-3 py-1 text-sm lg:hidden"
+                onClick={() => setPickedId("")}
+              >
+                Back to the roll
+              </button>
+              <PersonCard person={picked} />
+            </div>
+          ) : (
+            <p className="tavern-frame px-4 py-6 text-sm text-[var(--muted)]">
+              Pick a name on the left to rename them, mute them, or close their doors.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function SectionHead({ title, count, hint }: { title: string; count: number; hint: string }) {
+function FilterChip({
+  id,
+  current,
+  count,
+  onPick,
+  children,
+}: {
+  id: PeopleFilter;
+  current: PeopleFilter;
+  count: number;
+  onPick: (id: PeopleFilter) => void;
+  children: string;
+}) {
   return (
-    <div className="mb-4">
-      <h2 className="tavern-title text-xl text-[var(--gold)]">
-        {title}
-        <span className="ml-2 text-base font-normal tabular-nums text-[var(--muted)]">{count}</span>
-      </h2>
-      <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">{hint}</p>
-    </div>
+    <button type="button" className={`ladder-chip ${current === id ? "is-active" : ""}`} onClick={() => onPick(id)}>
+      {children}
+      <span className={`ml-2 tabular-nums ${count > 0 ? "text-[var(--gold-bright)]" : "text-[var(--muted)]"}`}>
+        {count}
+      </span>
+    </button>
   );
 }
 
-function EmptyCopy({ children }: { children: string }) {
-  return <p className="tavern-frame px-4 py-5 text-sm text-[var(--muted)]">{children}</p>;
+function PersonRow({ person, active, onPick }: { person: DeskPerson; active: boolean; onPick: () => void }) {
+  const restriction = person.restriction;
+  const bits = [
+    person.createdAt ? `joined ${formatDay(person.createdAt)}` : "",
+    `${person.posts} ${person.posts === 1 ? "post" : "posts"}`,
+    person.ips.length > 0 ? `${person.ips.length} ${person.ips.length === 1 ? "IP" : "IPs"}` : "",
+    person.hiddenPosts > 0 ? `${person.hiddenPosts} hidden` : "",
+  ].filter(Boolean);
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onPick}
+        className={`flex w-full flex-col items-start gap-1 px-4 py-3 text-left ${
+          active ? "bg-[rgba(80,50,16,0.45)]" : "hover:bg-[rgba(80,50,16,0.22)]"
+        }`}
+      >
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-base">{person.displayName}</span>
+          {person.innkeeper ? (
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--gold)]">Innkeeper</span>
+          ) : null}
+          {person.needsRename ? (
+            <span className="text-xs uppercase tracking-[0.18em] text-[#e07a7a]">Bad name</span>
+          ) : null}
+          {restriction ? (
+            <span className="text-xs uppercase tracking-[0.18em] text-[#e07a7a]">
+              {describeRestriction(restriction)}
+            </span>
+          ) : null}
+        </span>
+        <span className="text-sm text-[var(--muted)]">{person.email}</span>
+        <span className="text-xs text-[var(--muted)]">{bits.join(" · ")}</span>
+      </button>
+    </li>
+  );
 }
 
 function PersonCard({ person }: { person: DeskPerson }) {
@@ -151,7 +298,7 @@ function PersonCard({ person }: { person: DeskPerson }) {
   ].filter(Boolean);
 
   return (
-    <li className="tavern-frame p-4 md:p-5">
+    <article className="tavern-frame p-4 md:p-5">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <p className="text-lg">{person.displayName}</p>
         {person.innkeeper ? (
@@ -199,9 +346,7 @@ function PersonCard({ person }: { person: DeskPerson }) {
           <p className="text-sm">
             {sanctionName(restriction.kind)} by {restriction.by || "the innkeeper"} on {formatDay(restriction.createdAt)}
             {restriction.expiresAt ? ` · runs out ${formatSanctionUntil(restriction.expiresAt)}` : " · no end date"}
-            {restriction.reason ? (
-              <span className="block text-[var(--muted)]">{restriction.reason}</span>
-            ) : null}
+            {restriction.reason ? <span className="block text-[var(--muted)]">{restriction.reason}</span> : null}
           </p>
           <form action={liftSanction.bind(null, person.id)}>
             <button className="tavern-btn-ghost text-sm" type="submit">
@@ -212,9 +357,7 @@ function PersonCard({ person }: { person: DeskPerson }) {
       ) : null}
       {person.history.length > 0 ? (
         <details className="mt-3 text-sm text-[var(--muted)]">
-          <summary className="cursor-pointer">
-            Past record ({person.history.length})
-          </summary>
+          <summary className="cursor-pointer">Past record ({person.history.length})</summary>
           <ul className="mt-2 space-y-1">
             {person.history.map((entry) => (
               <li key={entry.id}>
@@ -236,6 +379,6 @@ function PersonCard({ person }: { person: DeskPerson }) {
           <SanctionForm userId={person.id} replacing={Boolean(restriction)} />
         </>
       )}
-    </li>
+    </article>
   );
 }

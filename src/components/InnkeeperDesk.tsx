@@ -146,9 +146,9 @@ export function InnkeeperDesk({
           </section>
         </div>
       ) : desk === "people" ? (
-        <div className="space-y-12">
-          {focusPersonId ? null : <InnkeeperDoors rows={ipBans} />}
+        <div className="space-y-10">
           <InnkeeperPeople people={people} focusId={focusPersonId} />
+          <InnkeeperDoors rows={ipBans} />
         </div>
       ) : (
         <div className="space-y-10">
