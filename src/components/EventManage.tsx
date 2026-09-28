@@ -10,9 +10,11 @@ import {
   removeCoHost,
   removeSignup,
   sendSignupsToBracket,
+  shuffleEventBracket,
   toggleCheckIn,
   updateEvent,
 } from "@/lib/actions";
+import { SeedShuffleModal } from "@/components/SeedShuffleModal";
 import { toDatetimeLocalValue } from "@/lib/event-when";
 import { confirmedSignups, rosterExport, signupSpotsLabel, waitlistedSignups } from "@/lib/signup-form";
 import type { EventRecord, EventSignup } from "@/lib/types";
@@ -29,8 +31,12 @@ export function EventManage({ event, editKey, isOwner }: { event: EventRecord; e
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [drawing, setDrawing] = useState(false);
   const confirmed = confirmedSignups(event);
   const waiting = waitlistedSignups(event);
+  const shufflePool = (event.teams.length >= 2 ? event.teams : confirmed.map((signup) => signup.name))
+    .map((name) => name.trim())
+    .filter(Boolean);
 
   return (
     <section className="tavern-frame space-y-5 p-5">
@@ -248,6 +254,20 @@ export function EventManage({ event, editKey, isOwner }: { event: EventRecord; e
                 Send to bracket
               </button>
             </form>
+            <button
+              type="button"
+              className="tavern-btn-ghost px-3 py-1 text-sm"
+              onClick={() => {
+                if (shufflePool.length < 2) {
+                  setError("Lock in at least two names first.");
+                  return;
+                }
+                setError("");
+                setDrawing(true);
+              }}
+            >
+              Shuffle seeds
+            </button>
           </div>
         </div>
         {confirmed.length === 0 ? (
@@ -332,6 +352,27 @@ export function EventManage({ event, editKey, isOwner }: { event: EventRecord; e
           </form>
         )}
       </div>
+      {drawing ? (
+        <SeedShuffleModal
+          names={shufflePool}
+          onCancel={() => setDrawing(false)}
+          onDone={async (order) => {
+            setDrawing(false);
+            setError("");
+            setMessage("");
+            const formData = new FormData();
+            formData.set("slug", event.slug);
+            formData.set("editKey", editKey);
+            formData.set("teams", order.join("\n"));
+            const result = await shuffleEventBracket(formData);
+            if (result && "error" in result && result.error) {
+              setError(result.error);
+              return;
+            }
+            setMessage("Seeds shuffled.");
+          }}
+        />
+      ) : null}
     </section>
   );
 }

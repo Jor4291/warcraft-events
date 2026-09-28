@@ -16,7 +16,7 @@ import {
   registerUser,
   resendMailboxCode,
 } from "./auth";
-import { applyWinner, buildSingleElim } from "./brackets";
+import { applyWinner, buildSingleElim, shuffleNames } from "./brackets";
 import { ingestArdu1 } from "./ard";
 import { applyPlayerIdentity, recomputeLadder, shouldConfirm } from "./rating";
 import { canManageEvent, isEventOwner } from "./event-access";
@@ -684,6 +684,35 @@ export async function sendSignupsToBracket(formData: FormData) {
   if (teams.length < 2) {
     return { error: "Add at least two names on the roster." };
   }
+  await updateStore((data) => {
+    const target = data.events.find((item) => item.slug === slug);
+    if (!target) {
+      return;
+    }
+    target.teams = teams;
+    target.rounds = buildSingleElim(teams);
+  });
+  revalidateEvent(found.event);
+  return { ok: true as const };
+}
+
+export async function shuffleEventBracket(formData: FormData) {
+  const slug = String(formData.get("slug") || "");
+  const found = await findManageable(slug);
+  if ("error" in found) {
+    return found;
+  }
+  const locked = found.event.teams.map((name) => name.trim()).filter(Boolean);
+  const fromRoster = confirmedSignups(found.event).map((signup) => signup.name);
+  const source = locked.length >= 2 ? locked : fromRoster;
+  if (source.length < 2) {
+    return { error: "Lock in at least two names first." };
+  }
+  const drawn = String(formData.get("teams") || "")
+    .split(/\r?\n/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const teams = drawn.length >= 2 ? drawn : shuffleNames(source);
   await updateStore((data) => {
     const target = data.events.find((item) => item.slug === slug);
     if (!target) {

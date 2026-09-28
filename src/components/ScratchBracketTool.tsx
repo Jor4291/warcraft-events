@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { TraditionalBracket } from "@/components/BracketBoard";
+import { SeedShuffleModal } from "@/components/SeedShuffleModal";
 import { applyWinner, buildSingleElim } from "@/lib/brackets";
 import type { BracketRound } from "@/lib/types";
 
@@ -94,6 +95,7 @@ function clearScratch() {
 export function ScratchBracketTool() {
   const scratch = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [error, setError] = useState("");
+  const [drawing, setDrawing] = useState(false);
 
   function hangBoard() {
     const names = parseNames(scratch.teamsText);
@@ -103,6 +105,21 @@ export function ScratchBracketTool() {
     }
     setError("");
     writeScratch({ ...scratch, rounds: buildSingleElim(names) });
+  }
+
+  function openShuffle() {
+    const names = parseNames(scratch.teamsText);
+    if (names.length < 2) {
+      setError("Add at least two names.");
+      return;
+    }
+    setError("");
+    setDrawing(true);
+  }
+
+  function applyShuffle(order: string[]) {
+    setDrawing(false);
+    writeScratch({ ...scratch, teamsText: order.join("\n"), rounds: buildSingleElim(order) });
   }
 
   function resetBoard() {
@@ -144,6 +161,9 @@ export function ScratchBracketTool() {
           <button type="submit" className="tavern-btn">
             {scratch.rounds.length ? "Rebuild board" : "Hang a scratch board"}
           </button>
+          <button type="button" className="tavern-btn-ghost" onClick={openShuffle}>
+            Shuffle seeds
+          </button>
           {scratch.rounds.length || scratch.teamsText || scratch.title ? (
             <button type="button" className="tavern-btn-ghost" onClick={resetBoard}>
               Clear this tab
@@ -155,6 +175,13 @@ export function ScratchBracketTool() {
           WarcraftEvents and is not tied to a calendar night.
         </p>
       </form>
+      {drawing ? (
+        <SeedShuffleModal
+          names={parseNames(scratch.teamsText)}
+          onDone={applyShuffle}
+          onCancel={() => setDrawing(false)}
+        />
+      ) : null}
       {scratch.rounds.length > 0 ? (
         <TraditionalBracket
           heading={scratch.title.trim() || "Scratch bracket"}

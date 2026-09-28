@@ -34,6 +34,23 @@ function roundLabel(playersInRound: number) {
   return `Round of ${playersInRound}`;
 }
 
+export function shuffleNames(names: string[]) {
+  const next = names.map((name) => name.trim()).filter(Boolean);
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const bytes = new Uint32Array(1);
+    if (typeof globalThis.crypto?.getRandomValues === "function") {
+      globalThis.crypto.getRandomValues(bytes);
+    } else {
+      bytes[0] = Math.floor(Math.random() * 0xffffffff);
+    }
+    const j = bytes[0] % (i + 1);
+    const swap = next[i];
+    next[i] = next[j];
+    next[j] = swap;
+  }
+  return next;
+}
+
 export function buildSingleElim(teams: string[]): BracketRound[] {
   const named = teams.map((team) => team.trim()).filter(Boolean);
   if (named.length < 2) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveWhiteboard, setMatchWinner } from "@/lib/actions";
+import { SeedShuffleModal } from "@/components/SeedShuffleModal";
 import type { BracketMatch, BracketRound } from "@/lib/types";
 
 const MIN_SCALE = 0.4;
@@ -27,8 +28,14 @@ export function BracketBoard({
 }) {
   const [notes, setNotes] = useState(whiteboard);
   const [roster, setRoster] = useState(teams.join("\n"));
+  const [drawing, setDrawing] = useState(false);
   const [pending, start] = useTransition();
   const heading = title.trim() || "Tournament Bracket";
+  const teamKey = teams.join("\n");
+
+  useEffect(() => {
+    setRoster(teamKey);
+  }, [teamKey]);
 
   return (
     <div className="space-y-6">
@@ -58,12 +65,49 @@ export function BracketBoard({
               className="mt-1 w-full border border-[#b8944e] bg-[#efe0b8] px-3 py-2 text-[#2b1a0c]"
             />
           </label>
-          <button type="submit" disabled={pending} className="tavern-btn mt-3">
-            {pending ? "Hanging the board..." : "Rebuild bracket"}
-          </button>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button type="submit" disabled={pending} className="tavern-btn">
+              {pending ? "Hanging the board..." : "Rebuild bracket"}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              className="tavern-btn-ghost"
+              onClick={() => {
+                const names = roster
+                  .split(/\r?\n|,/)
+                  .map((line) => line.trim())
+                  .filter(Boolean);
+                if (names.length < 2) {
+                  return;
+                }
+                setDrawing(true);
+              }}
+            >
+              Shuffle seeds
+            </button>
+          </div>
         </form>
       ) : whiteboard ? (
         <div className="tavern-parchment whitespace-pre-wrap p-5">{whiteboard}</div>
+      ) : null}
+
+      {drawing ? (
+        <SeedShuffleModal
+          names={roster
+            .split(/\r?\n|,/)
+            .map((line) => line.trim())
+            .filter(Boolean)}
+          onCancel={() => setDrawing(false)}
+          onDone={(order) => {
+            const nextRoster = order.join("\n");
+            setDrawing(false);
+            setRoster(nextRoster);
+            start(async () => {
+              await saveWhiteboard(slug, editKey, notes, nextRoster);
+            });
+          }}
+        />
       ) : null}
 
       {rounds.length === 0 ? (
