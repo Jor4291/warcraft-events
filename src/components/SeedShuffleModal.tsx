@@ -132,12 +132,14 @@ export function SeedShuffleModal({
         <h2 id={titleId} className="tavern-title mt-2 text-3xl text-[var(--gold-bright)]">
           {finished ? "The field is set" : `Drawing seed ${nextSeed}`}
         </h2>
-        <p
-          key={`${locked.length}-${reel}-${landed ? "lock" : "spin"}`}
-          className={`seed-draw-reel tavern-title ${landed ? "is-locked" : "is-spinning"}`}
-        >
-          {reel}
-        </p>
+        <div className="seed-draw-reel-slot">
+          <p
+            key={`${locked.length}-${reel}-${landed ? "lock" : "spin"}`}
+            className={`seed-draw-reel tavern-title ${landed ? "is-locked" : "is-spinning"}`}
+          >
+            {reel}
+          </p>
+        </div>
         <ol className="seed-draw-roll">
           {order.map((name, index) => {
             const shown = locked[index];
