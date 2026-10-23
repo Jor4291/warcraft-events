@@ -7,16 +7,16 @@ export const metadata = { title: "Confirm mailbox" };
 export default async function ConfirmPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; mailError?: string }>;
 }) {
   const user = await getSessionUser();
   if (!user) {
     redirect("/account/login?next=/account/confirm");
   }
-  const { next = "/account" } = await searchParams;
+  const { next = "/account", mailError = "" } = await searchParams;
   const dest = next.startsWith("/") ? next : "/account";
   if (user.emailVerified) {
     redirect(dest);
   }
-  return <ConfirmForm email={user.email} next={dest} />;
+  return <ConfirmForm email={user.email} next={dest} mailError={mailError} />;
 }

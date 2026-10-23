@@ -28,7 +28,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 1. Repo is created from this folder.
 2. [vercel.com/new](https://vercel.com/new) → import the GitHub repo.
-3. Set `ADMIN_PASSWORD`, `HUB_NAMES`, and `DATABASE_URL` in Vercel project env.
+3. Set `ADMIN_PASSWORD`, `HUB_NAMES`, `DATABASE_URL`, `RESEND_KEY`, and `RESEND_FROM` in Vercel project env. `RESEND_FROM` must be an address on a domain verified in Resend, for example `WarcraftEvents <noreply@warcraftevents.com>`. The sandbox sender `onboarding@resend.dev` only delivers to the Resend account owner.
 4. At SiteGround DNS, add Vercel’s records for `WarcraftEvents.com` (and `www`). Leave SiteGround mail records alone if you still use that email.
 
 ## Database (Neon)

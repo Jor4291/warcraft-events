@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { repairRounds } from "./brackets";
 import { emptyStore, withoutPlaceholderEvents } from "./seed";
 import { hasDatabase } from "./db";
 import { ladderIdentitiesChanged, normalizeLadderIdentities } from "./rating";
@@ -37,7 +38,7 @@ function normalizeEvent(event: EventRecord): EventRecord {
     signups: (event.signups ?? []).map(normalizeEventSignup),
     cancelledAt: event.cancelledAt ?? "",
     teams: event.teams ?? [],
-    rounds: event.rounds ?? [],
+    rounds: repairRounds(event.rounds ?? []),
     whiteboard: event.whiteboard ?? "",
     threadSlug: event.threadSlug ?? "",
   };

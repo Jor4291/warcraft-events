@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveWhiteboard, setMatchWinner } from "@/lib/actions";
+import { applyWinner } from "@/lib/brackets";
 import { SeedShuffleModal } from "@/components/SeedShuffleModal";
 import type { BracketMatch, BracketRound } from "@/lib/types";
 
@@ -29,13 +30,20 @@ export function BracketBoard({
   const [notes, setNotes] = useState(whiteboard);
   const [roster, setRoster] = useState(teams.join("\n"));
   const [drawing, setDrawing] = useState(false);
+  const [boardError, setBoardError] = useState("");
+  const [localRounds, setLocalRounds] = useState(rounds);
   const [pending, start] = useTransition();
+  const pickQueue = useRef(Promise.resolve());
   const heading = title.trim() || "Tournament Bracket";
   const teamKey = teams.join("\n");
 
   useEffect(() => {
     setRoster(teamKey);
   }, [teamKey]);
+
+  useEffect(() => {
+    setLocalRounds(rounds);
+  }, [rounds]);
 
   return (
     <div className="space-y-6">
@@ -44,7 +52,11 @@ export function BracketBoard({
           className="tavern-parchment p-5"
           action={() => {
             start(async () => {
-              await saveWhiteboard(slug, editKey, notes, roster);
+              setBoardError("");
+              const result = await saveWhiteboard(slug, editKey, notes, roster);
+              if (result && "error" in result && result.error) {
+                setBoardError(result.error);
+              }
             });
           }}
         >
@@ -87,6 +99,7 @@ export function BracketBoard({
               Shuffle seeds
             </button>
           </div>
+          {boardError ? <p className="mt-3 text-red-300">{boardError}</p> : null}
         </form>
       ) : whiteboard ? (
         <div className="tavern-parchment whitespace-pre-wrap p-5">{whiteboard}</div>
@@ -104,26 +117,36 @@ export function BracketBoard({
             setDrawing(false);
             setRoster(nextRoster);
             start(async () => {
-              await saveWhiteboard(slug, editKey, notes, nextRoster);
+              setBoardError("");
+              const result = await saveWhiteboard(slug, editKey, notes, nextRoster);
+              if (result && "error" in result && result.error) {
+                setBoardError(result.error);
+              }
             });
           }}
         />
       ) : null}
 
-      {rounds.length === 0 ? (
+      {localRounds.length === 0 ? (
         <p className="text-[var(--muted)]">No bracket yet. Add at least two names to hang a board.</p>
       ) : (
         <TraditionalBracket
           heading={heading}
-          rounds={rounds}
+          rounds={localRounds}
           canEdit={canEdit}
           onPick={(matchId, winner) => {
-            start(async () => {
-              await setMatchWinner(slug, editKey, matchId, winner);
+            setLocalRounds((current) => applyWinner(current, matchId, winner));
+            setBoardError("");
+            pickQueue.current = pickQueue.current.then(async () => {
+              const result = await setMatchWinner(slug, editKey, matchId, winner);
+              if (result && "error" in result && result.error) {
+                setBoardError(result.error);
+              }
             });
           }}
         />
       )}
+      {boardError && !canEdit ? <p className="text-red-300">{boardError}</p> : null}
     </div>
   );
 }

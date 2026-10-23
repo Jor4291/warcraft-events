@@ -4,16 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { confirmAccount, resendConfirmCode } from "@/lib/actions";
 
-export function ConfirmForm({ email, next }: { email: string; next: string }) {
-  const [error, setError] = useState("");
+export function ConfirmForm({ email, next, mailError = "" }: { email: string; next: string; mailError?: string }) {
+  const [error, setError] = useState(mailError);
   const [sent, setSent] = useState("");
+  const deliveryFailed = Boolean(mailError) && !sent;
 
   return (
     <main className="mx-auto w-full max-w-md px-6 py-12">
       <h1 className="tavern-title text-3xl">Confirm this mailbox</h1>
       <p className="mt-2 mb-8 text-[var(--muted)]">
-        We sent a 6-digit hearth code to <span className="text-[var(--gold)]">{email}</span>. New patrons cannot take a
-        roster slot or write on the board until that mailbox answers.
+        {deliveryFailed ? (
+          <>
+            The hearth code did not reach <span className="text-[var(--gold)]">{email}</span>. New patrons cannot take
+            a roster slot or write on the board until that mailbox answers.
+          </>
+        ) : (
+          <>
+            We sent a 6-digit hearth code to <span className="text-[var(--gold)]">{email}</span>. New patrons cannot
+            take a roster slot or write on the board until that mailbox answers.
+          </>
+        )}
       </p>
       <form
         className="space-y-4"

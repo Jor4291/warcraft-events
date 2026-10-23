@@ -200,7 +200,12 @@ export async function registerAccount(formData: FormData) {
   }
   const next = String(formData.get("next") || "/account");
   const user = await getSessionUser();
-  redirect(user ? afterAuthPath(user, next) : "/account");
+  const dest = user ? afterAuthPath(user, next) : "/account";
+  if ("mailError" in result && result.mailError && dest.startsWith("/account/confirm")) {
+    const join = dest.includes("?") ? "&" : "?";
+    redirect(`${dest}${join}mailError=${encodeURIComponent(result.mailError)}`);
+  }
+  redirect(dest);
 }
 
 export async function loginAccount(formData: FormData) {

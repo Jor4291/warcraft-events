@@ -187,9 +187,10 @@ export function ScratchBracketTool() {
           heading={scratch.title.trim() || "Scratch bracket"}
           rounds={scratch.rounds}
           canEdit
-          onPick={(matchId, winner) =>
-            writeScratch({ ...scratch, rounds: applyWinner(scratch.rounds, matchId, winner) })
-          }
+          onPick={(matchId, winner) => {
+            const latest = getSnapshot();
+            writeScratch({ ...latest, rounds: applyWinner(latest.rounds, matchId, winner) });
+          }}
         />
       ) : (
         <p className="text-[var(--muted)]">Add at least two names and hang the board.</p>

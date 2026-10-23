@@ -172,14 +172,16 @@ export async function registerUser(email: string, password: string, displayName:
   if (!created) {
     return { error: "That email is already registered." };
   }
+  let mailError = "";
   if (issuedCode) {
     const mailed = await sendConfirmCode(normalized, issuedCode);
     if ("error" in mailed && mailed.error) {
-      console.error("Confirm mail failed after register");
+      console.error("Confirm mail failed after register", mailed.error);
+      mailError = mailed.error;
     }
   }
   await setSession(id);
-  return { ok: true as const };
+  return mailError ? { ok: true as const, mailError } : { ok: true as const };
 }
 
 export async function loginUser(email: string, password: string) {

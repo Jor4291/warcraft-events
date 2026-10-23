@@ -34,6 +34,37 @@ function roundLabel(playersInRound: number) {
   return `Round of ${playersInRound}`;
 }
 
+function copyRounds(rounds: BracketRound[]): BracketRound[] {
+  return rounds.map((round) => ({
+    ...round,
+    matches: round.matches.map((match) => ({ ...match })),
+  }));
+}
+
+function parentOf(matchIndex: number) {
+  return {
+    slot: Math.floor(matchIndex / 2),
+    side: (matchIndex % 2 === 0 ? "playerA" : "playerB") as "playerA" | "playerB",
+  };
+}
+
+function writeForward(rounds: BracketRound[], roundIndex: number, matchIndex: number, name: string) {
+  const parent = rounds[roundIndex + 1];
+  if (!parent) {
+    return;
+  }
+  const { slot, side } = parentOf(matchIndex);
+  const match = parent.matches[slot];
+  if (!match) {
+    return;
+  }
+  match[side] = name;
+  if (match.winner && match.winner !== match.playerA && match.winner !== match.playerB) {
+    match.winner = "";
+  }
+  writeForward(rounds, roundIndex + 1, slot, match.winner);
+}
+
 export function shuffleNames(names: string[]) {
   const next = names.map((name) => name.trim()).filter(Boolean);
   for (let i = next.length - 1; i > 0; i -= 1) {
@@ -70,9 +101,10 @@ export function buildSingleElim(teams: string[]): BracketRound[] {
       const playerA = players[i] || "";
       const playerB = players[i + 1] || "";
       let winner = "";
-      if (playerA && !playerB) {
+      // Only first-round empty slots are real byes. Later empties are waiting on a prior match.
+      if (round === 1 && playerA && !playerB) {
         winner = playerA;
-      } else if (playerB && !playerA) {
+      } else if (round === 1 && playerB && !playerA) {
         winner = playerB;
       }
       matches.push({
@@ -90,27 +122,42 @@ export function buildSingleElim(teams: string[]): BracketRound[] {
   return rounds;
 }
 
+export function repairRounds(rounds: BracketRound[]): BracketRound[] {
+  if (!Array.isArray(rounds) || rounds.length === 0) {
+    return Array.isArray(rounds) ? rounds : [];
+  }
+  const next = copyRounds(rounds);
+  for (let r = 1; r < next.length; r += 1) {
+    for (let i = 0; i < next[r].matches.length; i += 1) {
+      const match = next[r].matches[i];
+      if (!match.playerA || !match.playerB) {
+        match.winner = "";
+      }
+      if (match.winner && match.winner !== match.playerA && match.winner !== match.playerB) {
+        match.winner = "";
+      }
+      writeForward(next, r, i, match.winner);
+    }
+  }
+  return next;
+}
+
 export function applyWinner(rounds: BracketRound[], matchId: string, winner: string) {
-  const next = rounds.map((round) => ({
-    ...round,
-    matches: round.matches.map((match) => ({ ...match })),
-  }));
+  const next = repairRounds(copyRounds(rounds));
 
   for (let r = 0; r < next.length; r += 1) {
     const matchIndex = next[r].matches.findIndex((match) => match.id === matchId);
     if (matchIndex === -1) {
       continue;
     }
-    next[r].matches[matchIndex].winner = winner;
-    const parent = next[r + 1];
-    if (parent) {
-      const slot = Math.floor(matchIndex / 2);
-      const side = matchIndex % 2 === 0 ? "playerA" : "playerB";
-      parent.matches[slot][side] = winner;
-      if (parent.matches[slot].winner && parent.matches[slot].winner !== winner) {
-        parent.matches[slot].winner = "";
-      }
+    const match = next[r].matches[matchIndex];
+    if (winner !== match.playerA && winner !== match.playerB) {
+      return next;
     }
+    const bye = Boolean(match.playerA) !== Boolean(match.playerB);
+    const chosen = !bye && match.winner === winner ? "" : winner;
+    match.winner = chosen;
+    writeForward(next, r, matchIndex, chosen);
     break;
   }
   return next;
