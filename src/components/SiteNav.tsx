@@ -74,6 +74,9 @@ export function SiteNav({
             <Link href="/bracket" onClick={() => setOpen(null)}>
               Scratch bracket
             </Link>
+            <Link href="/character" onClick={() => setOpen(null)}>
+              Character creator
+            </Link>
           </div>
         ) : null}
       </div>
